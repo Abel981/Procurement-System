@@ -8,5 +8,5 @@ import (
 
 func UserRoute(e *echo.Echo) {
     e.POST("user/signup", controllers.CreateUser) 
-	e.GET("/user/:userId", controllers.GetAUser)
+	e.GET("/user/:id", controllers.GetAUser)
 }

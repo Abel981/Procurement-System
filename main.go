@@ -2,24 +2,27 @@ package main
 
 import (
 	"context"
-	"fmt"
+
+	"procrument-system/authorization"
 	"procrument-system/configs"
 	"procrument-system/routes"
-
+	"github.com/casbin/casbin"
 	"github.com/labstack/echo/v4"
 )
 
 func main() {
 	e := echo.New()
-	mongoClient :=	configs.ConnectDB()
+	mongoClient := configs.ConnectDB()
 	//routes
 	routes.UserRoute(e)
 	routes.AdminRoute(e)
+	enforcer := authorization.Enforcer{Enforcer: casbin.NewEnforcer("model.conf", "policy.csv")}
+  e.Use(enforcer.Enforce)
 	e.Logger.Fatal(e.Start(":1323"))
 
 	defer func() {
 		if err := mongoClient.Disconnect(context.Background()); err != nil {
-			fmt.Println("hey")
+
 			panic(err)
 		}
 	}()
