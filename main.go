@@ -6,7 +6,9 @@ import (
 	"procrument-system/authorization"
 	"procrument-system/configs"
 	"procrument-system/routes"
+
 	"github.com/casbin/casbin"
+
 	"github.com/labstack/echo/v4"
 )
 
@@ -15,9 +17,18 @@ func main() {
 	mongoClient := configs.ConnectDB()
 	//routes
 	routes.UserRoute(e)
+
 	routes.AdminRoute(e)
-	enforcer := authorization.Enforcer{Enforcer: casbin.NewEnforcer("model.conf", "policy.csv")}
+	
+	authEnforcer ,_:= casbin.NewEnforcerSafe("./model.conf", "./policy.csv")
+
+
+
+	enforcer := authorization.Enforcer{Enforcer: authEnforcer}
+
   e.Use(enforcer.Enforce)
+  
+  
 	e.Logger.Fatal(e.Start(":1323"))
 
 	defer func() {
