@@ -78,20 +78,20 @@ func CreateUser(c echo.Context) error {
 func GetAUser(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-jwtCookie, err := c.Cookie("jwt")
-if err != nil {
-	return c.JSON(http.StatusUnauthorized, responses.UserDataResponse{Status: http.StatusUnauthorized, Message: "unautorized", Data: &echo.Map{"error": err.Error()}})
-}
+// jwtCookie, err := c.Cookie("jwt")
+// if err != nil {
+// 	return c.JSON(http.StatusUnauthorized, responses.UserDataResponse{Status: http.StatusUnauthorized, Message: "unautorized", Data: &echo.Map{"error": err.Error()}})
+// }
 	userId := c.Param("id")
 	objId, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "invalid ObjectID", Data: &echo.Map{"error": err.Error()}})
 	}
-	err = services.VerifyToken(jwtCookie.Value)
-	if err != nil {
-		return c.JSON(http.StatusUnauthorized, responses.UserDataResponse{Status: http.StatusUnauthorized, Message: "unautorized", Data: &echo.Map{"error": err.Error()}})
+	// err = services.VerifyToken(jwtCookie.Value)
+	// if err != nil {
+	// 	return c.JSON(http.StatusUnauthorized, responses.UserDataResponse{Status: http.StatusUnauthorized, Message: "unautorized", Data: &echo.Map{"error": err.Error()}})
 
-	}
+	// }
 
 	var user models.User
 	err = userCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&user)

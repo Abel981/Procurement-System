@@ -9,4 +9,6 @@ import (
 func AdminRoute(e *echo.Echo)  {
   e.POST("/admin/signup", controllers.CreateAdmin)
   e.POST("/admin/login", controllers.AdminLogin)
+  e.POST("/admin/createdepartment", controllers.AddDepartment)
+  e.PATCH("/admin/createdepartmentadmin/:id",controllers.CreateDepartmentAdmin)
 }

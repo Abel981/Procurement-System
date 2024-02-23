@@ -11,12 +11,16 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/context"
 )
 
 var adminCollection *mongo.Collection = configs.GetCollection(configs.DB, "admin")
+var departmentCollection *mongo.Collection = configs.GetCollection(configs.DB, "departments")
+var departmentAdminCollection *mongo.Collection = configs.GetCollection(configs.DB, "departmentAdmin")
+
 // var validate = validator.New()
 
 func CreateAdmin(c echo.Context) error {
@@ -45,7 +49,7 @@ func CreateAdmin(c echo.Context) error {
 		Email:          user.Email,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
-		Role: "admin",
+		Role:           "admin",
 		HashedPassword: string(hashedPassword),
 	}
 
@@ -65,7 +69,7 @@ func AdminLogin(c echo.Context) error {
 	password := c.FormValue("password")
 
 	var admin models.Admin
-	
+
 	err := adminCollection.FindOne(ctx, bson.M{"email": email}).Decode(&admin)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -108,4 +112,62 @@ func AdminLogin(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"message": "Login successful",
 	})
+}
+
+func AddDepartment(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	var department dtos.AddDepartmentDto
+	defer cancel()
+	if err := c.Bind(&department); err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "error", Data: &echo.Map{"data": err.Error()}})
+	}
+	result, err := departmentCollection.InsertOne(ctx, department)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+	}
+	return c.JSON(http.StatusCreated, result)
+
+}
+
+func CreateDepartmentAdmin(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	departmentId := c.Param("id")
+	objId, err := primitive.ObjectIDFromHex(departmentId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "invalid ObjectID", Data: &echo.Map{"error": err.Error()}})
+	}
+	var departmentAdmin dtos.UserSignupDTO
+
+	if err := c.Bind(&departmentAdmin); err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "error", Data: &echo.Map{"data": err.Error()}})
+	}
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(departmentAdmin.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"message": "Internal server error! please try again",
+		})
+	}
+
+	newDepartmentAdmin :=
+		models.User{
+			Email:          departmentAdmin.Email,
+			FirstName:      departmentAdmin.FirstName,
+			LastName:       departmentAdmin.LastName,
+			Role:           "department_admin",
+			HashedPassword: string(hashedPassword),
+		}
+
+	filter := bson.M{"_id": objId}
+	update := bson.M{"$set": bson.M{"departmentAdmin": newDepartmentAdmin}}
+	_, err = departmentAdminCollection.InsertOne(ctx, newDepartmentAdmin)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+	}
+	result, err := departmentCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+	}
+	return c.JSON(http.StatusOK, responses.AdminDataResponse{Status: http.StatusOK, Message: "success", Data: &echo.Map{"department": result}})
+
 }

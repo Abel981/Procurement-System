@@ -33,7 +33,15 @@ func (e *Enforcer) Enforce(next echo.HandlerFunc) echo.HandlerFunc {
 	if err != nil {
 		return echo.ErrUnauthorized
 	}
-	claims := services.ParseToken(jwtCookie.Value)
+
+	err = services.VerifyToken(jwtCookie.Value)
+	if err != nil {
+		return echo.ErrUnauthorized
+	}
+	claims, err := services.ParseToken(jwtCookie.Value)
+	if err != nil {
+		return echo.ErrUnauthorized
+	}
 	fmt.Println(claims.Role)
 
 		// user := c.Get("user").(*jwt.Token)

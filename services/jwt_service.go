@@ -59,10 +59,13 @@ type JwtCustomClaims struct {
 	return nil
  }
 
- func ParseToken(token string) *JwtCustomClaims {
-	parsedAccessToken, _ := jwt.ParseWithClaims(token, &JwtCustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+ func ParseToken(tokenString string) (*JwtCustomClaims, error) {
+	parsedAccessToken, err := jwt.ParseWithClaims(tokenString, &JwtCustomClaims{}, func(token *jwt.Token) (interface{}, error) {
 	 return secretKey, nil
 	})
+	if err != nil {
+		return nil, err
+	 }
    
-	return parsedAccessToken.Claims.(*JwtCustomClaims)
+	return parsedAccessToken.Claims.(*JwtCustomClaims), nil
    }
