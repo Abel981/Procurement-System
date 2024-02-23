@@ -20,7 +20,7 @@ func main() {
 
 	routes.AdminRoute(e)
 	
-	authEnforcer ,_:= casbin.NewEnforcerSafe("./model.conf", "./policy.csv")
+	authEnforcer ,_:= casbin.NewEnforcerSafe("./authorization/model.conf", "./authorization/policy.csv")
 
 
 
