@@ -19,8 +19,8 @@ type Enforcer struct {
 
 func (e *Enforcer) Enforce(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		if c.Path() == "/user/login"  || c.Path() == "/user/signup"{
-			fmt.Println("what")
+		if c.Path() == "/user/login"  || c.Path() == "/user/signup" || c.Path() == "/admin/login" || c.Path() == "/admin/signup"{
+
 			return next(c)
 		}
 		// fmt.Println(c.Cookie("jwt"))

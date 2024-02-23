@@ -1,1 +1,3 @@
-p, user, /*, POST
+p, user, /user/*, *
+p, admin, /admin/*, *
+p, admin, /admin/signup, *

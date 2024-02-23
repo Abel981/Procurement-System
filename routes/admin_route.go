@@ -1,7 +1,12 @@
 package routes
 
-import "github.com/labstack/echo/v4"
+import (
+	"procrument-system/controllers"
+
+	"github.com/labstack/echo/v4"
+)
 
 func AdminRoute(e *echo.Echo)  {
-    //All routes related to users comes here
+  e.POST("/admin/signup", controllers.CreateAdmin)
+  e.POST("/admin/login", controllers.AdminLogin)
 }

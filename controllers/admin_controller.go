@@ -1,0 +1,111 @@
+package controllers
+
+import (
+	"net/http"
+	"procrument-system/configs"
+	"procrument-system/models"
+	"procrument-system/models/dtos"
+	"procrument-system/responses"
+	"procrument-system/services"
+	"time"
+
+	"github.com/labstack/echo/v4"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/net/context"
+)
+
+var adminCollection *mongo.Collection = configs.GetCollection(configs.DB, "admin")
+// var validate = validator.New()
+
+func CreateAdmin(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	var user dtos.UserSignupDTO
+	defer cancel()
+	if err := c.Bind(&user); err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "error", Data: &echo.Map{"data": err.Error()}})
+	}
+
+	//use the validator library to validate required fields
+	if validationErr := validate.Struct(&user); validationErr != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "error", Data: &echo.Map{"data": validationErr.Error()}})
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"message": "Internal server error! please try again",
+		})
+	}
+
+	newUser := models.User{
+
+		Email:          user.Email,
+		FirstName:      user.FirstName,
+		LastName:       user.LastName,
+		Role: "admin",
+		HashedPassword: string(hashedPassword),
+	}
+
+	result, err := adminCollection.InsertOne(ctx, newUser)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+	}
+
+	return c.JSON(http.StatusCreated, responses.UserDataResponse{Status: http.StatusCreated, Message: "success", Data: &echo.Map{"data": result}})
+}
+
+func AdminLogin(c echo.Context) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	email := c.FormValue("email")
+	password := c.FormValue("password")
+
+	var admin models.Admin
+	
+	err := adminCollection.FindOne(ctx, bson.M{"email": email}).Decode(&admin)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return c.JSON(http.StatusUnauthorized, responses.UserDataResponse{Status: http.StatusUnauthorized, Message: "Incorrect email or password", Data: nil})
+		}
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"error": err.Error()}})
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(admin.HashedPassword), []byte(password))
+	if err != nil {
+
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"message": "Incorrect email or password",
+		})
+	}
+	claims := services.JwtCustomClaims{
+		FirstName: admin.FirstName,
+		LastName:  admin.LastName,
+		Role:      services.Role(admin.Role),
+	}
+	tokenString, err := services.CreateToken(claims)
+
+	if err != nil {
+
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"error": err.Error()}})
+	}
+	// token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// t, err := token.SignedString([]byte("secret"))
+
+	cookie := &http.Cookie{
+		Name:     "jwt",
+		Value:    tokenString,
+		Expires:  time.Now().Add(24 * time.Hour), // Token expires in 24 hours
+		HttpOnly: true,
+		Secure:   false, // Set to true in production (requires HTTPS)
+		Path:     "/",
+	}
+	// c.Set("user",token)
+	c.SetCookie(cookie)
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message": "Login successful",
+	})
+}
