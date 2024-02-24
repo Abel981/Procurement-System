@@ -20,6 +20,7 @@ import (
 var adminCollection *mongo.Collection = configs.GetCollection(configs.DB, "admin")
 var departmentCollection *mongo.Collection = configs.GetCollection(configs.DB, "departments")
 var departmentAdminCollection *mongo.Collection = configs.GetCollection(configs.DB, "departmentAdmin")
+var requisitionCollection *mongo.Collection = configs.GetCollection(configs.DB, "requisition")
 
 // var validate = validator.New()
 
@@ -157,7 +158,6 @@ func CreateDepartmentAdmin(c echo.Context) error {
 			Role:           "department_admin",
 			HashedPassword: string(hashedPassword),
 		}
-
 	filter := bson.M{"_id": objId}
 	update := bson.M{"$set": bson.M{"departmentAdmin": newDepartmentAdmin}}
 	_, err = departmentAdminCollection.InsertOne(ctx, newDepartmentAdmin)
@@ -169,5 +169,63 @@ func CreateDepartmentAdmin(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
 	}
 	return c.JSON(http.StatusOK, responses.AdminDataResponse{Status: http.StatusOK, Message: "success", Data: &echo.Map{"department": result}})
+
+}
+
+func GetAllRequisitions(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var requistion []models.Requistion
+	requisitionStatus := c.QueryParam("status")
+	var filter bson.M
+	if requisitionStatus != "" {
+		filter = bson.M{"status": requisitionStatus}
+	}
+	cursor, err := requisitionCollection.Find(ctx, filter)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+	}
+
+	defer cursor.Close(ctx)
+	for cursor.Next(ctx) {
+		var req models.Requistion
+		if err := cursor.Decode(&req); err != nil {
+			return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+		}
+		// Append the decoded requisition to the slice
+		requistion = append(requistion, req)
+	}
+
+	return c.JSON(http.StatusOK, requistion)
+}
+
+
+func ChangeRequistionStatus(c echo.Context) error{
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	requistionId := c.Param("id")
+	objId, err := primitive.ObjectIDFromHex(requistionId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "invalid ObjectID", Data: &echo.Map{"error": err.Error()}})
+	}
+	var requistionStatus struct {
+		status string
+	}
+
+	if err := c.Bind(&requistionStatus); err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "error", Data: &echo.Map{"data": err.Error()}})
+
+	}
+	filter := bson.M{"_id": objId}
+	update := bson.M{"$set": bson.M{"status": requistionStatus.status}}
+
+
+	result, err := requisitionCollection.UpdateOne(ctx,filter,update)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+	}
+	return c.JSON(http.StatusOK, result.UpsertedID)
+
 
 }
