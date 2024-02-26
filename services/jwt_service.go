@@ -16,6 +16,7 @@ const (
 )
 
 type JwtCustomClaims struct {
+	Email string `json:"email"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Role      Role   `json:"role"`
@@ -27,6 +28,7 @@ type JwtCustomClaims struct {
    func CreateToken(claim JwtCustomClaims) (string, error) {
 	   token := jwt.NewWithClaims(jwt.SigningMethodHS256, 
 		  &JwtCustomClaims{ 
+			claim.Email,
 		   claim.FirstName, 
 		  claim.LastName,
 		   claim.Role,

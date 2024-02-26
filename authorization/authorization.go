@@ -52,7 +52,7 @@ func (e *Enforcer) Enforce(next echo.HandlerFunc) echo.HandlerFunc {
 
 		result,err := e.Enforcer.EnforceSafe(string(claims.Role), path, method)
 		if err != nil {
-			fmt.Println("hey")
+		
 			return echo.ErrUnauthorized
 		}
 

@@ -192,9 +192,13 @@ func GetAllRequisitions(c echo.Context) error {
 		if err := cursor.Decode(&req); err != nil {
 			return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
 		}
-		// Append the decoded requisition to the slice
+		
 		requistion = append(requistion, req)
 	}
+	if len(requistion) == 0 {
+      
+        return c.JSON(http.StatusOK, []models.Requistion{})
+    }
 
 	return c.JSON(http.StatusOK, requistion)
 }
