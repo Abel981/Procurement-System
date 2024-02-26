@@ -18,21 +18,8 @@ import (
 	"golang.org/x/net/context"
 )
 
-type Role string
-
-const (
-	MainAdmin       Role = "admin"
-	DepartmentAdmin Role = "department_admin"
-	User            Role = "user"
-)
-
-type JwtCustomClaims struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Role      Role   `json:"role"`
-}
-
 var userCollection *mongo.Collection = configs.GetCollection(configs.DB, "users")
+var bidCollection *mongo.Collection = configs.GetCollection(configs.DB, "bids")
 var validate = validator.New()
 
 func CreateUser(c echo.Context) error {
@@ -63,7 +50,7 @@ func CreateUser(c echo.Context) error {
 		Email:          user.Email,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
-		Role: "user",
+		Role:           "user",
 		HashedPassword: string(hashedPassword),
 	}
 
@@ -78,10 +65,10 @@ func CreateUser(c echo.Context) error {
 func GetAUser(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-// jwtCookie, err := c.Cookie("jwt")
-// if err != nil {
-// 	return c.JSON(http.StatusUnauthorized, responses.UserDataResponse{Status: http.StatusUnauthorized, Message: "unautorized", Data: &echo.Map{"error": err.Error()}})
-// }
+	// jwtCookie, err := c.Cookie("jwt")
+	// if err != nil {
+	// 	return c.JSON(http.StatusUnauthorized, responses.UserDataResponse{Status: http.StatusUnauthorized, Message: "unautorized", Data: &echo.Map{"error": err.Error()}})
+	// }
 	userId := c.Param("id")
 	objId, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
@@ -155,4 +142,56 @@ func Login(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"message": "Login successful",
 	})
+}
+
+func CreateBid(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	var bid dtos.BidDto
+	var user models.User
+	var requisition models.Requistion
+	defer cancel()
+	requisitionId := c.Param("requisitionId")
+	objectID, err := primitive.ObjectIDFromHex(requisitionId)
+	if err != nil {
+		// If parsing fails, return a Bad Request response
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid departmentID"})
+	}
+
+	err = requisitionCollection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&requisition)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusUnauthorized, Message: "Incorrect email or password", Data: nil})
+		}
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"error": err.Error()}})
+	}
+
+	if err := c.Bind(&bid); err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "error", Data: &echo.Map{"data": err.Error()}})
+	}
+	//todo add required tag in bid dto
+	if validationErr := validate.Struct(&bid); validationErr != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "error", Data: &echo.Map{"data": validationErr.Error()}})
+	}
+
+	jwtCookie, _ := c.Cookie("jwt")
+	claims, _ := services.ParseToken(jwtCookie.Value)
+	var filter = bson.M{"email": claims.Email}
+	err = userCollection.FindOne(ctx, filter).Decode(&user)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+	}
+
+	newBid := models.Bid{
+		SupplierId:   user.ID,
+		RequistionId: objectID,
+		Price:        bid.Price,
+		Status:       models.Pending,
+		CreatedAt:    time.Now(),
+	}
+	result, err := bidCollection.InsertOne(ctx, newBid)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+	}
+	return c.JSON(http.StatusCreated, responses.UserDataResponse{Status: http.StatusCreated, Message: "success", Data: &echo.Map{"data": result}})
+
 }

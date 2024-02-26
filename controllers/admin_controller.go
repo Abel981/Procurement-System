@@ -192,19 +192,18 @@ func GetAllRequisitions(c echo.Context) error {
 		if err := cursor.Decode(&req); err != nil {
 			return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
 		}
-		
+
 		requistion = append(requistion, req)
 	}
 	if len(requistion) == 0 {
-      
-        return c.JSON(http.StatusOK, []models.Requistion{})
-    }
+
+		return c.JSON(http.StatusOK, []models.Requistion{})
+	}
 
 	return c.JSON(http.StatusOK, requistion)
 }
 
-
-func ChangeRequistionStatus(c echo.Context) error{
+func ChangeRequistionStatus(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -224,12 +223,10 @@ func ChangeRequistionStatus(c echo.Context) error{
 	filter := bson.M{"_id": objId}
 	update := bson.M{"$set": bson.M{"status": requistionStatus.status}}
 
-
-	result, err := requisitionCollection.UpdateOne(ctx,filter,update)
+	result, err := requisitionCollection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
 	}
 	return c.JSON(http.StatusOK, result.UpsertedID)
-
 
 }
