@@ -5,10 +5,10 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func UserRoute(e *echo.Echo) {
-	r := e.Group("/users")
-    r.POST("/signup", controllers.CreateUser) 
-	r.POST("/login", controllers.LoginUser)
+func DepartmentRoute(e *echo.Echo) {
+	r := e.Group("/department")
+    // r.POST("/signup", controllers.CreateUser) 
+	r.POST("/login", controllers.LoginDepartment)
 	// r := e.Group("/restricted")
 	// Configure middleware with the custom claims type
 	// config := echojwt.Config{
@@ -21,7 +21,7 @@ func UserRoute(e *echo.Echo) {
 	// }
 	// r.Use(echojwt.WithConfig(config))
 
-	r.GET("/:id", controllers.GetAUser)
-	r.POST("createbid/:reqId", controllers.CreateBid)
-
+	// r.GET("/:id", controllers.GetAUser)
+	r.POST("/createrequistion", controllers.CreateRequistion)
+	
 }

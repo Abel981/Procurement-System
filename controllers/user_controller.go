@@ -92,7 +92,7 @@ func GetAUser(c echo.Context) error {
 	return c.JSON(http.StatusOK, responses.UserDataResponse{Status: http.StatusOK, Message: "success", Data: &echo.Map{"user": user}})
 }
 
-func Login(c echo.Context) error {
+func LoginUser(c echo.Context) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -150,7 +150,7 @@ func CreateBid(c echo.Context) error {
 	var user models.User
 	var requisition models.Requistion
 	defer cancel()
-	requisitionId := c.Param("requisitionId")
+	requisitionId := c.Param("reqId")
 	objectID, err := primitive.ObjectIDFromHex(requisitionId)
 	if err != nil {
 		// If parsing fails, return a Bad Request response
