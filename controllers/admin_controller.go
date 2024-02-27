@@ -230,3 +230,70 @@ func ChangeRequistionStatus(c echo.Context) error {
 	return c.JSON(http.StatusOK, result.UpsertedID)
 
 }
+
+func ApproveBid(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	bidId := c.Param("bidId")
+	objId, err := primitive.ObjectIDFromHex(bidId)
+
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "invalid ObjectID", Data: &echo.Map{"error": err.Error()}})
+	}
+	var updatedBid models.Bid
+	updateResult, err := bidCollection.UpdateOne(ctx,
+		bson.M{"_id": objId},
+		bson.M{"$set": bson.M{"status": models.Approved}},
+	)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	if updateResult.ModifiedCount == 0 {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Bid not found or already accepted"})
+	}
+	err = bidCollection.FindOne(ctx, bson.M{"_id": bidId}).Decode(&updatedBid)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch updated bid"})
+	}
+	_, err = bidCollection.UpdateMany(ctx,
+		bson.M{"_id": bson.M{"$ne": bidId}, "requistionId": bson.M{"$eq": updatedBid.RequistionId}},
+		bson.M{"$set": bson.M{"status": models.Denied}},
+	)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"message": "Bid accepted successfully"})
+}
+
+func GetAllBids(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var bids []models.Bid
+	requisitionId := c.Param("reqId")
+	objId, err := primitive.ObjectIDFromHex(requisitionId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "invalid ObjectID", Data: &echo.Map{"error": err.Error()}})
+	}
+	var filter = bson.M{"requistionId": objId}
+	cursor, err := bidCollection.Find(ctx, filter)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+	}
+
+	defer cursor.Close(ctx)
+	for cursor.Next(ctx) {
+		var bid models.Bid
+		if err := cursor.Decode(&bid); err != nil {
+			return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+		}
+
+		bids = append(bids, bid)
+	}
+	if len(bids) == 0 {
+
+		return c.JSON(http.StatusOK, []models.Requistion{})
+	}
+
+	return c.JSON(http.StatusOK, bids)
+}

@@ -12,6 +12,8 @@ func AdminRoute(e *echo.Echo)  {
   e.POST("/admin/createdepartment", controllers.AddDepartment)
   e.POST("/admin/createdepartmentadmin/:id",controllers.CreateDepartmentAdmin)
   e.GET("/admin/getrequistions", controllers.GetAllRequisitions)
-  e.PATCH("/admin/updaterequistion:id", controllers.ChangeRequistionStatus)
+  e.PATCH("/admin/updaterequistion/:id", controllers.ChangeRequistionStatus)
+  e.PATCH("/admin/approvebid/:bidId", controllers.ApproveBid)
+  e.GET("/admin/getbids", controllers.GetAllBids)
 
 }
