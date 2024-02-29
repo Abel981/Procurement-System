@@ -3,7 +3,6 @@ package authorization
 import (
 	"fmt"
 	"procrument-system/services"
-	
 
 	"github.com/casbin/casbin"
 
@@ -19,30 +18,32 @@ type Enforcer struct {
 
 func (e *Enforcer) Enforce(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		if c.Path() == "/user/login"  || c.Path() == "/user/signup" || c.Path() == "/admin/login" || c.Path() == "/admin/signup"{
+		fmt.Println(c.Path())
+		fmt.Println("hey")
+		if c.Path() == "/user/login" || c.Path() == "/user/signup" || c.Path() == "/admin/login" || c.Path() == "/department/login" {
 
 			return next(c)
 		}
 		// fmt.Println(c.Cookie("jwt"))
-	// 	cookie, err := c.Cookie("jwt")
-	// 	fmt.Println(cookie.Value)
-	// if err != nil {
-	// 	return err
-	// }
-	jwtCookie, err :=c.Cookie("jwt")
-	if err != nil {
-		return echo.ErrUnauthorized
-	}
+		// 	cookie, err := c.Cookie("jwt")
+		// 	fmt.Println(cookie.Value)
+		// if err != nil {
+		// 	return err
+		// }
+		jwtCookie, err := c.Cookie("jwt")
+		if err != nil {
+			return echo.ErrUnauthorized
+		}
 
-	err = services.VerifyToken(jwtCookie.Value)
-	if err != nil {
-		return echo.ErrUnauthorized
-	}
-	claims, err := services.ParseToken(jwtCookie.Value)
-	if err != nil {
-		return echo.ErrUnauthorized
-	}
-	fmt.Println(claims.Role)
+		err = services.VerifyToken(jwtCookie.Value)
+		if err != nil {
+			return echo.ErrUnauthorized
+		}
+		claims, err := services.ParseToken(jwtCookie.Value)
+		if err != nil {
+			return echo.ErrUnauthorized
+		}
+		fmt.Println(claims.Role)
 
 		// user := c.Get("user").(*jwt.Token)
 		// claims := user.Claims.(*controllers.JwtCustomClaims)
@@ -50,9 +51,9 @@ func (e *Enforcer) Enforce(next echo.HandlerFunc) echo.HandlerFunc {
 		path := c.Request().URL.Path
 		fmt.Println(path)
 
-		result,err := e.Enforcer.EnforceSafe(string(claims.Role), path, method)
+		result, err := e.Enforcer.EnforceSafe(string(claims.Role), path, method)
 		if err != nil {
-		
+
 			return echo.ErrUnauthorized
 		}
 

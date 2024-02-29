@@ -151,24 +151,28 @@ func CreateDepartmentAdmin(c echo.Context) error {
 	}
 
 	newDepartmentAdmin :=
-		models.User{
-			Email:          departmentAdmin.Email,
-			FirstName:      departmentAdmin.FirstName,
-			LastName:       departmentAdmin.LastName,
-			Role:           "department_admin",
-			HashedPassword: string(hashedPassword),
+		models.DepartmentAdmin{
+			DepartmentId: objId,
+			User: models.User{
+
+				Email:          departmentAdmin.Email,
+				FirstName:      departmentAdmin.FirstName,
+				LastName:       departmentAdmin.LastName,
+				Role:           models.Role(services.DepartmentAdmin),
+				HashedPassword: string(hashedPassword),
+			},
 		}
 	filter := bson.M{"_id": objId}
-	update := bson.M{"$set": bson.M{"departmentAdmin": newDepartmentAdmin}}
-	_, err = departmentAdminCollection.InsertOne(ctx, newDepartmentAdmin)
+	// update := bson.M{"$set": bson.M{"departmentAdmin": newDepartmentAdmin}}
+	result, err := departmentAdminCollection.InsertOne(ctx, newDepartmentAdmin)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
 	}
-	result, err := departmentCollection.UpdateOne(ctx, filter, update)
+	_, err = departmentCollection.UpdateOne(ctx, filter, bson.M{"$set": bson.M{"departmentAdminId": result.InsertedID}})
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
 	}
-	return c.JSON(http.StatusOK, responses.AdminDataResponse{Status: http.StatusOK, Message: "success", Data: &echo.Map{"department": result}})
+	return c.JSON(http.StatusOK, "success")
 
 }
 
@@ -213,7 +217,7 @@ func ChangeRequistionStatus(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "invalid ObjectID", Data: &echo.Map{"error": err.Error()}})
 	}
 	var requistionStatus struct {
-		status string
+		Status string `json:"status"`
 	}
 
 	if err := c.Bind(&requistionStatus); err != nil {
@@ -221,13 +225,13 @@ func ChangeRequistionStatus(c echo.Context) error {
 
 	}
 	filter := bson.M{"_id": objId}
-	update := bson.M{"$set": bson.M{"status": requistionStatus.status}}
+	update := bson.M{"$set": bson.M{"status": requistionStatus.Status}}
 
-	result, err := requisitionCollection.UpdateOne(ctx, filter, update)
+	_, err = requisitionCollection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
 	}
-	return c.JSON(http.StatusOK, result.UpsertedID)
+	return c.JSON(http.StatusOK, "success")
 
 }
 

@@ -1,4 +1,4 @@
 p, user, /user/*, *
 p, admin, /admin/*, *
 p, admin, /admin/signup, *
-p, department, /department/*, *
+p, department_admin, /department/*, *

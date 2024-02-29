@@ -7,11 +7,12 @@ import (
 
 type Department struct {
 	ID               primitive.ObjectID `bson:"_id,omitempty"`
-	DepartmentName   string             `json:"department_name,omitempty" form:"department_name" validate:"required"`
-	DepartmentBudget decimal.Decimal    `json:"department_budget,omitempty" form:"department_bidget" validate:"required"`
-	DepartmentAdmin  User               `json:"department_admin,omitempty" form:"department_admin" bson:"departmentAdmin" `
+	DepartmentName   string             `json:"departmentName,omitempty" form:"departmentName" validate:"required"`
+	DepartmentBudget decimal.Decimal    `json:"departmentBudget,omitempty" form:"departmentBudget" validate:"required"`
+	DepartmentAdmin  User               `json:"departmentAdmin,omitempty" form:"departmentAdmin" bson:"departmentAdmin" `
 }
 
 type DepartmentAdmin struct {
 	User
+	DepartmentId   primitive.ObjectID            `json:"departmentId,omitempty" form:"department_name" validate:"required"`
 }

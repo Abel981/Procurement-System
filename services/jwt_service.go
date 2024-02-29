@@ -10,8 +10,8 @@ import (
    type Role string
 
 const (
-	MainAdmin       Role = "main admin"
-	DepartmentAdmin Role = "department admin"
+	MainAdmin       Role = "admin"
+	DepartmentAdmin Role = "department_admin"
 	User            Role = "user"
 )
 

@@ -15,11 +15,11 @@ const (
 )
 
 type Requistion struct {
-	ID primitive.ObjectID `bson:"_id,omitempty"`
+	ID primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 
-	DepartmentId primitive.ObjectID `bson:"departmentId"`
-	ItemName     string             `bson:"itemName"`
-	Quantity     int                `bson:"quantity"`
-	Status       RequistionStatus   `bson:"status"`
-	CreatedAt    time.Time          `bson:"createdAt"`
+	DepartmentId primitive.ObjectID `bson:"departmentId" json:"departmentId"`
+	ItemName     string             `bson:"itemName" json:"itemName"`
+	Quantity     int                `bson:"quantity" json:"quantity"`
+	Status       RequistionStatus   `bson:"status" json:"status"`
+	CreatedAt    time.Time          `bson:"createdAt" json:"createdAt"`
 }

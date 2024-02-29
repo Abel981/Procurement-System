@@ -6,7 +6,7 @@ import (
 )
 
 func UserRoute(e *echo.Echo) {
-	r := e.Group("/users")
+	r := e.Group("/user")
     r.POST("/signup", controllers.CreateUser) 
 	r.POST("/login", controllers.LoginUser)
 	// r := e.Group("/restricted")

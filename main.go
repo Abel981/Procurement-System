@@ -19,16 +19,14 @@ func main() {
 	routes.UserRoute(e)
 
 	routes.AdminRoute(e)
-	
-	authEnforcer ,_:= casbin.NewEnforcerSafe("./authorization/model.conf", "./authorization/policy.csv")
+	routes.DepartmentRoute(e)
 
-
+	authEnforcer, _ := casbin.NewEnforcerSafe("./authorization/model.conf", "./authorization/policy.csv")
 
 	enforcer := authorization.Enforcer{Enforcer: authEnforcer}
 
-  e.Use(enforcer.Enforce)
-  
-  
+	e.Use(enforcer.Enforce)
+
 	e.Logger.Fatal(e.Start(":1323"))
 
 	defer func() {

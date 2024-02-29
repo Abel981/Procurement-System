@@ -14,6 +14,6 @@ func AdminRoute(e *echo.Echo)  {
   e.GET("/admin/getrequistions", controllers.GetAllRequisitions)
   e.PATCH("/admin/updaterequistion/:id", controllers.ChangeRequistionStatus)
   e.PATCH("/admin/approvebid/:bidId", controllers.ApproveBid)
-  e.GET("/admin/getbids", controllers.GetAllBids)
+  e.GET("/admin/getbids/:reqId", controllers.GetAllBids)
 
 }
