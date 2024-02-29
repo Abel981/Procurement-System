@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
    
    type Role string
@@ -16,6 +17,7 @@ const (
 )
 
 type JwtCustomClaims struct {
+	Id primitive.ObjectID `json:"id"`
 	Email string `json:"email"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
@@ -28,6 +30,7 @@ type JwtCustomClaims struct {
    func CreateToken(claim JwtCustomClaims) (string, error) {
 	   token := jwt.NewWithClaims(jwt.SigningMethodHS256, 
 		  &JwtCustomClaims{ 
+			claim.Id,
 			claim.Email,
 		   claim.FirstName, 
 		  claim.LastName,

@@ -115,6 +115,8 @@ func LoginUser(c echo.Context) error {
 		})
 	}
 	claims := services.JwtCustomClaims{
+		Id:        user.ID,
+		Email:     user.Email,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
 		Role:      services.Role(user.Role),
@@ -147,16 +149,24 @@ func LoginUser(c echo.Context) error {
 func CreateBid(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	var bid dtos.BidDto
-	var user models.User
+	// var user models.User
 	var requisition models.Requistion
 	defer cancel()
-	requisitionId := c.Param("reqId")
-	objectID, err := primitive.ObjectIDFromHex(requisitionId)
-	if err != nil {
-		// If parsing fails, return a Bad Request response
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid departmentID"})
-	}
+	// requisitionId := c.Param("reqId")
+	// objectID, err := primitive.ObjectIDFromHex(requisitionId)
+	// if err != nil {
+	// 	// If parsing fails, return a Bad Request response
+	// 	return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid departmentID"})
+	// }
 
+	if err := c.Bind(&bid); err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "error", Data: &echo.Map{"data": err.Error()}})
+	}
+	objectID, err := primitive.ObjectIDFromHex(bid.RequistionId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusUnauthorized, Message: "Incorrect email or password", Data: nil})
+
+	}
 	err = requisitionCollection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&requisition)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -165,9 +175,6 @@ func CreateBid(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"error": err.Error()}})
 	}
 
-	if err := c.Bind(&bid); err != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "error", Data: &echo.Map{"data": err.Error()}})
-	}
 	//todo add required tag in bid dto
 	if validationErr := validate.Struct(&bid); validationErr != nil {
 		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "error", Data: &echo.Map{"data": validationErr.Error()}})
@@ -175,14 +182,14 @@ func CreateBid(c echo.Context) error {
 
 	jwtCookie, _ := c.Cookie("jwt")
 	claims, _ := services.ParseToken(jwtCookie.Value)
-	var filter = bson.M{"email": claims.Email}
-	err = userCollection.FindOne(ctx, filter).Decode(&user)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
-	}
-
+	// var filter = bson.M{"email": claims.Email}
+	// err = userCollection.FindOne(ctx, filter).Decode(&user)
+	// if err != nil {
+	// 	return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+	// }
+	// supplierID, _ := primitive.ObjectIDFromHex(claims.ID)
 	newBid := models.Bid{
-		SupplierId:   user.ID,
+		SupplierId:   claims.Id,
 		RequistionId: objectID,
 		Price:        bid.Price,
 		Status:       models.Pending,

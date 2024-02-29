@@ -256,12 +256,12 @@ func ApproveBid(c echo.Context) error {
 	if updateResult.ModifiedCount == 0 {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "Bid not found or already accepted"})
 	}
-	err = bidCollection.FindOne(ctx, bson.M{"_id": bidId}).Decode(&updatedBid)
+	err = bidCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&updatedBid)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch updated bid"})
 	}
 	_, err = bidCollection.UpdateMany(ctx,
-		bson.M{"_id": bson.M{"$ne": bidId}, "requistionId": bson.M{"$eq": updatedBid.RequistionId}},
+		bson.M{"_id": bson.M{"$ne": objId}, "requistionId": bson.M{"$eq": updatedBid.RequistionId}},
 		bson.M{"$set": bson.M{"status": models.Denied}},
 	)
 	if err != nil {

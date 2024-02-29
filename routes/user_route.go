@@ -22,6 +22,6 @@ func UserRoute(e *echo.Echo) {
 	// r.Use(echojwt.WithConfig(config))
 
 	r.GET("/:id", controllers.GetAUser)
-	r.POST("createbid/:reqId", controllers.CreateBid)
+	r.POST("/createbid", controllers.CreateBid)
 
 }

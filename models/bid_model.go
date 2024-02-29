@@ -7,10 +7,10 @@ import (
 )
 
 type Bid struct {
-	ID           primitive.ObjectID `bson:"_id,omitempty"`
-	SupplierId   primitive.ObjectID `bson:"supplierId"`
-	RequistionId primitive.ObjectID `bson:"requistionId"`
-	Price        float64            `bson:"price"`
-	Status       RequistionStatus   `bson:"status"`
-	CreatedAt    time.Time          `bson:"createdAt"`
+	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id ,omitempty"`
+	SupplierId   primitive.ObjectID `bson:"supplierId" json:"supplierId"`
+	RequistionId primitive.ObjectID `bson:"requistionId" json:"requistionId"`
+	Price        float64            `bson:"price" json:"price"`
+	Status       RequistionStatus   `bson:"status"  json:"status"`
+	CreatedAt    time.Time          `bson:"createdAt" json:"createdAt"`
 }
