@@ -7,7 +7,7 @@ import (
 )
 
 type Bid struct {
-	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id ,omitempty"`
+	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
 	SupplierId   primitive.ObjectID `bson:"supplierId" json:"supplierId"`
 	RequistionId primitive.ObjectID `bson:"requistionId" json:"requistionId"`
 	Price        float64            `bson:"price" json:"price"`

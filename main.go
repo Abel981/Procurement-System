@@ -6,6 +6,7 @@ import (
 	"procrument-system/authorization"
 	"procrument-system/configs"
 	"procrument-system/routes"
+	"procrument-system/services"
 
 	"github.com/casbin/casbin"
 
@@ -26,6 +27,13 @@ func main() {
 	enforcer := authorization.Enforcer{Enforcer: authEnforcer}
 
 	e.Use(enforcer.Enforce)
+	services.SendEmail([]services.EmailRecipientData{
+		{
+		Email: "abel.wen07@gmail.com",
+		FirstName: "abel",
+		LastName: "wondwossen",
+		},
+	},"./index.html")
 
 	e.Logger.Fatal(e.Start(":1323"))
 
