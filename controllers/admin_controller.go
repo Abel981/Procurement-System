@@ -1,12 +1,14 @@
 package controllers
 
 import (
+	"log"
 	"net/http"
 	"procrument-system/configs"
 	"procrument-system/models"
 	"procrument-system/models/dtos"
 	"procrument-system/responses"
 	"procrument-system/services"
+	"sync"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -260,15 +262,103 @@ func ApproveBid(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch updated bid"})
 	}
-	_, err = bidCollection.UpdateMany(ctx,
-		bson.M{"_id": bson.M{"$ne": objId}, "requistionId": bson.M{"$eq": updatedBid.RequistionId}},
-		bson.M{"$set": bson.M{"status": models.Denied}},
-	)
+	var wg sync.WaitGroup
+
+	// Start goroutine to send email to approved bid
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// var approvedSupplier models.User
+		// err = userCollection.FindOne(ctx, bson.M{"_id": updatedBid.SupplierId}).Decode(&approvedSupplier)
+		services.SendEmail(services.EmailRecipientData{
+			FirstName: "abel",
+			LastName:  "wen",
+			Email:     "abel.wen07@gmail.com",
+		}, "./templates/accepted_bid.html")
+	}()
+
+	// Start goroutines to update status and send emails to rejected bids
+	cursor, err := bidCollection.Find(ctx, bson.M{"_id": bson.M{"$ne": objId}, "requistionId": bson.M{"$eq": updatedBid.RequistionId}})
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
+	defer cursor.Close(ctx)
+
+	var rejectedSupplier models.User
+
+	for cursor.Next(ctx) {
+		var rejectedBid models.Bid
+		if err := cursor.Decode(&rejectedBid); err != nil {
+			log.Println(err)
+			continue
+		}
+		err = userCollection.FindOne(ctx, bson.M{"_id": rejectedBid.SupplierId}).Decode(&rejectedSupplier)
+
+
+		// Update status of rejected bid
+		wg.Add(1)
+		go func(id primitive.ObjectID) {
+			defer wg.Done()
+			_, err := bidCollection.UpdateOne(ctx,
+				bson.M{"_id": id},
+				bson.M{"$set": bson.M{"status": models.Denied}},
+			)
+			if err != nil {
+				log.Printf("Error updating status of bid %s: %v\n", id.Hex(), err)
+			}
+		}(rejectedBid.ID)
+
+		// Send email to rejected bid
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+		services.SendEmail(services.EmailRecipientData{
+			FirstName: rejectedSupplier.FirstName,
+			LastName:  rejectedSupplier.LastName,
+			Email:     rejectedSupplier.Email,
+		}, "./templates/rejected_bid.html")
+		}()
+	}
+
+	wg.Wait()
+
 	return c.JSON(http.StatusOK, map[string]string{"message": "Bid accepted successfully"})
 }
+
+// func ApproveBid(c echo.Context) error {
+// 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+// 	defer cancel()
+// 	bidId := c.Param("bidId")
+// 	objId, err := primitive.ObjectIDFromHex(bidId)
+
+// 	if err != nil {
+// 		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "invalid ObjectID", Data: &echo.Map{"error": err.Error()}})
+// 	}
+// 	var updatedBid models.Bid
+// 	updateResult, err := bidCollection.UpdateOne(ctx,
+// 		bson.M{"_id": objId},
+// 		bson.M{"$set": bson.M{"status": models.Approved}},
+// 	)
+
+// 	if err != nil {
+// 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+// 	}
+// 	if updateResult.ModifiedCount == 0 {
+// 		return c.JSON(http.StatusNotFound, map[string]string{"error": "Bid not found or already accepted"})
+// 	}
+// 	err = bidCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&updatedBid)
+// 	if err != nil {
+// 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch updated bid"})
+// 	}
+// 	_, err = bidCollection.UpdateMany(ctx,
+// 		bson.M{"_id": bson.M{"$ne": objId}, "requistionId": bson.M{"$eq": updatedBid.RequistionId}},
+// 		bson.M{"$set": bson.M{"status": models.Denied}},
+// 	)
+// 	if err != nil {
+// 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+// 	}
+// 	return c.JSON(http.StatusOK, map[string]string{"message": "Bid accepted successfully"})
+// }
 
 func GetAllBids(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
