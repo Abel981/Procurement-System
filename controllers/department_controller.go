@@ -29,9 +29,9 @@ func LoginDepartment(c echo.Context) error {
 	err := departmentAdminCollection.FindOne(ctx, bson.M{"user.email": email}).Decode(&departmentAdmin)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return c.JSON(http.StatusUnauthorized, responses.UserDataResponse{Status: http.StatusUnauthorized, Message: "Incorrect email or password", Data: nil})
+			return c.JSON(http.StatusUnauthorized, responses.UserDataResponse{Message: "Incorrect email or password", Data: nil})
 		}
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 	fmt.Println(departmentAdmin.DepartmentId)
 
@@ -52,7 +52,7 @@ func LoginDepartment(c echo.Context) error {
 
 	if err != nil {
 
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 	// token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
@@ -79,18 +79,18 @@ func CreateRequistion(c echo.Context) error {
 	var requisition dtos.CreateRequistionDto
 	var departmentAdmin models.DepartmentAdmin
 	if err := c.Bind(&requisition); err != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
 
 	if validationErr := validate.Struct(&requisition); validationErr != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "error", Data: &map[string]interface{}{"data": validationErr.Error()}})
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": validationErr.Error()}})
 	}
 	jwtCookie, _ := c.Cookie("jwt")
 	claims, _ := services.ParseToken(jwtCookie.Value)
 	var filter = bson.M{"user.email": claims.Email}
 	err := departmentAdminCollection.FindOne(ctx, filter).Decode(&departmentAdmin)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
 
 	newRequistion := models.Requistion{
@@ -103,8 +103,8 @@ func CreateRequistion(c echo.Context) error {
 
 	result, err := requisitionCollection.InsertOne(ctx, newRequistion)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
-	return c.JSON(http.StatusCreated, responses.UserDataResponse{Status: http.StatusCreated, Message: "success", Data: &map[string]interface{}{"data": result}})
+	return c.JSON(http.StatusCreated, responses.UserDataResponse{ Message: "success", Data: &map[string]interface{}{"data": result}})
 
 }

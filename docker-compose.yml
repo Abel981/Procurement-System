@@ -17,8 +17,8 @@ services:
       - 1323:1323
     environment:
       MONGOURI: mongodb://mongo_db:27017
-      EMAIL_SENDER_NAME: abel.wen0@gmail.com
-      EMAIL_PASSWORD: nchd kzcp kudn aemx
+      EMAIL_SENDER_NAME: enter email
+      EMAIL_PASSWORD: enter password
     depends_on:
         - mongo_db
 volumes:

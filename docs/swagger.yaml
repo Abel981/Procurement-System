@@ -1,11 +1,55 @@
+definitions:
+  responses.UserDataResponse:
+    properties:
+      data:
+        additionalProperties: true
+        type: object
+      message:
+        type: string
+    type: object
 info:
   contact: {}
-  description: This is a sample server Petstore server.
+  description: This is a sample procuremen server api.
   license:
     name: Apache 2.0
-  title: Swagger Example API
+  title: procurement API
   version: "1.0"
 paths:
+  /admin/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate an admin user using email and password
+      parameters:
+      - description: Email address
+        in: formData
+        name: email
+        required: true
+        type: string
+      - description: Password
+        in: formData
+        name: password
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: 'Unauthorized: Incorrect email or password'
+          schema:
+            $ref: '#/definitions/responses.UserDataResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.UserDataResponse'
+      summary: Admin login
+      tags:
+      - admin
   /admin/signup:
     post:
       consumes:
