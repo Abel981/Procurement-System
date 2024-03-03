@@ -1,0 +1,42 @@
+info:
+  contact: {}
+  description: This is a sample server Petstore server.
+  license:
+    name: Apache 2.0
+  title: Swagger Example API
+  version: "1.0"
+paths:
+  /admin/signup:
+    post:
+      consumes:
+      - application/json
+      description: Create a new admin user with the provided details
+      parameters:
+      - in: formData
+        name: confirm_password
+        required: true
+        type: string
+      - in: formData
+        name: email
+        required: true
+        type: string
+      - in: formData
+        name: first_name
+        required: true
+        type: string
+      - in: formData
+        name: last_name
+        required: true
+        type: string
+      - in: formData
+        minLength: 6
+        name: password
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      summary: Create a new admin user
+      tags:
+      - admin
+swagger: "2.0"

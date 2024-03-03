@@ -2,24 +2,30 @@ package main
 
 import (
 	"context"
-
 	"procrument-system/authorization"
 	"procrument-system/configs"
+	_ "procrument-system/docs"
 	"procrument-system/routes"
-	// "procrument-system/services"
 
 	"github.com/casbin/casbin"
-
 	"github.com/labstack/echo/v4"
+	echoSwagger "github.com/swaggo/echo-swagger"
 )
+
+//	@title			procurement API
+//	@version		1.0
+//	@description	This is a sample procuremen server api.
+//	@license.name	Apache 2.0
 
 func main() {
 	e := echo.New()
 	mongoClient := configs.ConnectDB()
+
 	//routes
 	routes.UserRoute(e)
 
 	routes.AdminRoute(e)
+
 	routes.DepartmentRoute(e)
 
 	authEnforcer, _ := casbin.NewEnforcerSafe("./authorization/model.conf", "./authorization/policy.csv")
@@ -27,7 +33,7 @@ func main() {
 	enforcer := authorization.Enforcer{Enforcer: authEnforcer}
 
 	e.Use(enforcer.Enforce)
-	
+	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	e.Logger.Fatal(e.Start(":1323"))
 

@@ -24,19 +24,26 @@ var departmentCollection *mongo.Collection = configs.GetCollection(configs.DB, "
 var departmentAdminCollection *mongo.Collection = configs.GetCollection(configs.DB, "departmentAdmin")
 var requisitionCollection *mongo.Collection = configs.GetCollection(configs.DB, "requisition")
 
-// var validate = validator.New()
-
+// CreateAdmin creates a new admin user.
+//
+//	@Summary		Create a new admin user
+//	@Description	Create a new admin user with the provided details
+//	@Tags			admin
+//	@Accept			json
+//	@Produce		json
+//	@Param			adminData	formData	dtos.UserSignupDTO	true	"j"
+//	@Router			/admin/signup [post]
 func CreateAdmin(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	var user dtos.UserSignupDTO
 	defer cancel()
 	if err := c.Bind(&user); err != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "error", Data: &echo.Map{"data": err.Error()}})
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"data": err.Error()})
 	}
 
 	//use the validator library to validate required fields
 	if validationErr := validate.Struct(&user); validationErr != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "error", Data: &echo.Map{"data": validationErr.Error()}})
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"data": validationErr.Error()})
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
@@ -58,12 +65,24 @@ func CreateAdmin(c echo.Context) error {
 
 	result, err := adminCollection.InsertOne(ctx, newUser)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"data": err.Error()})
 	}
 
-	return c.JSON(http.StatusCreated, responses.UserDataResponse{Status: http.StatusCreated, Message: "success", Data: &echo.Map{"data": result}})
+	return c.JSON(http.StatusCreated, map[string]interface{}{"id": result.InsertedID})
 }
 
+// AdminLogin handles the authentication of admin users.
+// @Summary Admin login
+// @Description Authenticate an admin user using email and password
+// @Tags admin
+// @Accept  json
+// @Produce  json
+// @Param email formData string true "Email address"
+// @Param password formData string true "Password"
+// @Success 200 {object} map[string]interface{} "Login successful"
+// @Failure 401 {object} responses.UserDataResponse "Unauthorized: Incorrect email or password"
+// @Failure 500 {object} responses.UserDataResponse "Internal server error"
+// @Router /admin/login [post]
 func AdminLogin(c echo.Context) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -76,9 +95,9 @@ func AdminLogin(c echo.Context) error {
 	err := adminCollection.FindOne(ctx, bson.M{"email": email}).Decode(&admin)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return c.JSON(http.StatusUnauthorized, responses.UserDataResponse{Status: http.StatusUnauthorized, Message: "Incorrect email or password", Data: nil})
+			return c.JSON(http.StatusUnauthorized, responses.UserDataResponse{Message: "Incorrect email or password", Data: nil})
 		}
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"error": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(admin.HashedPassword), []byte(password))
 	if err != nil {
@@ -96,7 +115,7 @@ func AdminLogin(c echo.Context) error {
 
 	if err != nil {
 
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"error": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 	// token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
@@ -122,11 +141,11 @@ func AddDepartment(c echo.Context) error {
 	var department dtos.AddDepartmentDto
 	defer cancel()
 	if err := c.Bind(&department); err != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "error", Data: &echo.Map{"data": err.Error()}})
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
 	result, err := departmentCollection.InsertOne(ctx, department)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
 	return c.JSON(http.StatusCreated, result)
 
@@ -138,12 +157,12 @@ func CreateDepartmentAdmin(c echo.Context) error {
 	departmentId := c.Param("id")
 	objId, err := primitive.ObjectIDFromHex(departmentId)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "invalid ObjectID", Data: &echo.Map{"error": err.Error()}})
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 	var departmentAdmin dtos.UserSignupDTO
 
 	if err := c.Bind(&departmentAdmin); err != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "error", Data: &echo.Map{"data": err.Error()}})
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(departmentAdmin.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -168,11 +187,11 @@ func CreateDepartmentAdmin(c echo.Context) error {
 	// update := bson.M{"$set": bson.M{"departmentAdmin": newDepartmentAdmin}}
 	result, err := departmentAdminCollection.InsertOne(ctx, newDepartmentAdmin)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
 	_, err = departmentCollection.UpdateOne(ctx, filter, bson.M{"$set": bson.M{"departmentAdminId": result.InsertedID}})
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
 	return c.JSON(http.StatusOK, "success")
 
@@ -189,14 +208,14 @@ func GetAllRequisitions(c echo.Context) error {
 	}
 	cursor, err := requisitionCollection.Find(ctx, filter)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
 
 	defer cursor.Close(ctx)
 	for cursor.Next(ctx) {
 		var req models.Requistion
 		if err := cursor.Decode(&req); err != nil {
-			return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+			return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 		}
 
 		requistion = append(requistion, req)
@@ -216,14 +235,14 @@ func ChangeRequistionStatus(c echo.Context) error {
 	requistionId := c.Param("id")
 	objId, err := primitive.ObjectIDFromHex(requistionId)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "invalid ObjectID", Data: &echo.Map{"error": err.Error()}})
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 	var requistionStatus struct {
 		Status string `json:"status"`
 	}
 
 	if err := c.Bind(&requistionStatus); err != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "error", Data: &echo.Map{"data": err.Error()}})
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 
 	}
 	filter := bson.M{"_id": objId}
@@ -231,7 +250,7 @@ func ChangeRequistionStatus(c echo.Context) error {
 
 	_, err = requisitionCollection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
 	return c.JSON(http.StatusOK, "success")
 
@@ -244,7 +263,7 @@ func ApproveBid(c echo.Context) error {
 	objId, err := primitive.ObjectIDFromHex(bidId)
 
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "invalid ObjectID", Data: &echo.Map{"error": err.Error()}})
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 	var updatedBid models.Bid
 	updateResult, err := bidCollection.UpdateOne(ctx,
@@ -292,8 +311,7 @@ func ApproveBid(c echo.Context) error {
 			log.Println(err)
 			continue
 		}
-		err = userCollection.FindOne(ctx, bson.M{"_id": rejectedBid.SupplierId}).Decode(&rejectedSupplier)
-
+		_ = userCollection.FindOne(ctx, bson.M{"_id": rejectedBid.SupplierId}).Decode(&rejectedSupplier)
 
 		// Update status of rejected bid
 		wg.Add(1)
@@ -312,11 +330,11 @@ func ApproveBid(c echo.Context) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-		services.SendEmail(services.EmailRecipientData{
-			FirstName: rejectedSupplier.FirstName,
-			LastName:  rejectedSupplier.LastName,
-			Email:     rejectedSupplier.Email,
-		}, "./templates/rejected_bid.html")
+			services.SendEmail(services.EmailRecipientData{
+				FirstName: rejectedSupplier.FirstName,
+				LastName:  rejectedSupplier.LastName,
+				Email:     rejectedSupplier.Email,
+			}, "./templates/rejected_bid.html")
 		}()
 	}
 
@@ -332,7 +350,7 @@ func ApproveBid(c echo.Context) error {
 // 	objId, err := primitive.ObjectIDFromHex(bidId)
 
 // 	if err != nil {
-// 		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "invalid ObjectID", Data: &echo.Map{"error": err.Error()}})
+// 		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
 // 	}
 // 	var updatedBid models.Bid
 // 	updateResult, err := bidCollection.UpdateOne(ctx,
@@ -367,19 +385,19 @@ func GetAllBids(c echo.Context) error {
 	requisitionId := c.Param("reqId")
 	objId, err := primitive.ObjectIDFromHex(requisitionId)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Status: http.StatusBadRequest, Message: "invalid ObjectID", Data: &echo.Map{"error": err.Error()}})
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 	var filter = bson.M{"requistionId": objId}
 	cursor, err := bidCollection.Find(ctx, filter)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
 
 	defer cursor.Close(ctx)
 	for cursor.Next(ctx) {
 		var bid models.Bid
 		if err := cursor.Decode(&bid); err != nil {
-			return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Status: http.StatusInternalServerError, Message: "error", Data: &echo.Map{"data": err.Error()}})
+			return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 		}
 
 		bids = append(bids, bid)
