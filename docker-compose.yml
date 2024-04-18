@@ -15,10 +15,12 @@ services:
     build: .
     ports:
       - 1323:1323
+    volumes:
+      - .:/app
     environment:
       MONGOURI: mongodb://mongo_db:27017
-      EMAIL_SENDER_NAME: enter email
-      EMAIL_PASSWORD: enter password
+      EMAIL_SENDER_NAME: abel.wen0@gmail.com
+      EMAIL_PASSWORD: nchd kzcp kudn aemx
     depends_on:
         - mongo_db
 volumes:

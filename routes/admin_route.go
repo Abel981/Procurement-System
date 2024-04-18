@@ -9,8 +9,11 @@ import (
 func AdminRoute(e *echo.Echo)  {
   e.POST("/admin/signup", controllers.CreateAdmin)
   e.POST("/admin/login", controllers.AdminLogin)
+  e.POST("/admin/logout", controllers.AdminLogout)
   e.POST("/admin/createdepartment", controllers.AddDepartment)
   e.POST("/admin/createdepartmentadmin/:id",controllers.CreateDepartmentAdmin)
+  e.GET("/admin/departments", controllers.GetAllDepartments)
+  e.PATCH("/admin/updatedepartmentbudget/:id", controllers.UpdateDepartmentBudget)
   e.GET("/admin/getrequistions", controllers.GetAllRequisitions)
   e.PATCH("/admin/updaterequistion/:id", controllers.ChangeRequistionStatus)
   e.PATCH("/admin/approvebid/:bidId", controllers.ApproveBid)

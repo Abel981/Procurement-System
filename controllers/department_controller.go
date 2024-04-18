@@ -13,6 +13,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/context"
@@ -43,6 +44,7 @@ func LoginDepartment(c echo.Context) error {
 		})
 	}
 	claims := services.JwtCustomClaims{
+		Id: departmentAdmin.ID,
 		Email:     departmentAdmin.Email,
 		FirstName: departmentAdmin.FirstName,
 		LastName:  departmentAdmin.LastName,
@@ -78,6 +80,7 @@ func CreateRequistion(c echo.Context) error {
 	defer cancel()
 	var requisition dtos.CreateRequistionDto
 	var departmentAdmin models.DepartmentAdmin
+	var department models.Department
 	if err := c.Bind(&requisition); err != nil {
 		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
@@ -92,11 +95,20 @@ func CreateRequistion(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
+	filter = bson.M{"_id": departmentAdmin.DepartmentId}
+	err = departmentCollection.FindOne(ctx,filter).Decode(&department)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
 
 	newRequistion := models.Requistion{
+		DepartmentName: department.DepartmentName,
 		DepartmentId: departmentAdmin.DepartmentId,
+
 		ItemName:     requisition.ItemName,
 		Quantity:     requisition.Quantity,
+		Description: requisition.Description,
+		Price: requisition.Price,
 		Status:       models.Pending,
 		CreatedAt:    time.Now(),
 	}
@@ -107,4 +119,36 @@ func CreateRequistion(c echo.Context) error {
 	}
 	return c.JSON(http.StatusCreated, responses.UserDataResponse{ Message: "success", Data: &map[string]interface{}{"data": result}})
 
+}
+
+func GetDepartmentRequistions(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var requisitions []models.Requistion
+	departmentId := c.Param("deptId")
+	objId, err := primitive.ObjectIDFromHex(departmentId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+	var filter = bson.M{"departmentId": objId}
+	cursor, err := requisitionCollection.Find(ctx, filter)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
+
+	defer cursor.Close(ctx)
+	for cursor.Next(ctx) {
+		var requisition models.Requistion
+		if err := cursor.Decode(&requisition); err != nil {
+			return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+		}
+
+		requisitions = append(requisitions, requisition)
+	}
+	if len(requisitions) == 0 {
+
+		return c.JSON(http.StatusOK, []models.Requistion{})
+	}
+
+	return c.JSON(http.StatusOK, requisitions)
 }

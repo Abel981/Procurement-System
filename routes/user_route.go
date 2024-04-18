@@ -9,6 +9,7 @@ func UserRoute(e *echo.Echo) {
 	r := e.Group("/user")
     r.POST("/signup", controllers.CreateUser) 
 	r.POST("/login", controllers.LoginUser)
+	r.POST("/logout", controllers.LogoutUser)
 	// r := e.Group("/restricted")
 	// Configure middleware with the custom claims type
 	// config := echojwt.Config{
@@ -23,5 +24,7 @@ func UserRoute(e *echo.Echo) {
 
 	r.GET("/:id", controllers.GetAUser)
 	r.POST("/createbid", controllers.CreateBid)
+	r.GET("/requistions", controllers.GetAllRequisitions)
+	r.GET("/requisition/:id", controllers.GetRequisitionById)
 
 }

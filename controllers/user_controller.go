@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	
 	"net/http"
 	"procrument-system/configs"
 	"procrument-system/models"
@@ -161,6 +162,24 @@ func LoginUser(c echo.Context) error {
 		"message": "Login successful",
 	})
 }
+func LogoutUser(c echo.Context) error {
+	// Create a new cookie with the same name as the one you want to delete
+	cookie := new(http.Cookie)
+	cookie.Name = "jwt"
+	// Set the cookie's expiration date in the past to delete it
+	cookie.Expires = time.Unix(0, 0)
+	// Set the path of the cookie to match the one you want to delete
+	cookie.Path = "/"
+	// Set the HTTP-only flag to true if the cookie is HTTP-only
+	cookie.HttpOnly = true
+
+	// Set the cookie in the response header to delete it
+	c.SetCookie(cookie)
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message": "Logged out",
+	})
+}
 
 func CreateBid(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -217,4 +236,30 @@ func CreateBid(c echo.Context) error {
 	}
 	return c.JSON(http.StatusCreated, responses.UserDataResponse{ Message: "success", Data: &map[string]interface{}{"data": result}})
 
+
+
 }
+
+func GetRequisitionById(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	requisitionId := c.Param("id")
+	objId, err := primitive.ObjectIDFromHex(requisitionId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{ Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+
+	var requisition models.Requistion
+	err = requisitionCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&requisition)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return c.JSON(http.StatusNotFound, responses.UserDataResponse{Message: "user not found", Data: nil})
+		}
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+
+	return c.JSON(http.StatusOK, requisition)
+}
+
+

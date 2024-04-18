@@ -1,14 +1,14 @@
 package models
 
 import (
-	"github.com/shopspring/decimal"
+	// "github.com/shopspring/decimal"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Department struct {
 	ID               primitive.ObjectID `bson:"_id,omitempty"`
 	DepartmentName   string             `json:"departmentName,omitempty" form:"departmentName" validate:"required"`
-	DepartmentBudget decimal.Decimal    `json:"departmentBudget,omitempty" form:"departmentBudget" validate:"required"`
+	DepartmentBudget int    `json:"departmentBudget,omitempty" form:"departmentBudget" validate:"required"`
 	DepartmentAdmin  User               `json:"departmentAdmin,omitempty" form:"departmentAdmin" bson:"departmentAdmin" `
 }
 

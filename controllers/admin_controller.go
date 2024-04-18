@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"procrument-system/configs"
@@ -84,6 +85,7 @@ func CreateAdmin(c echo.Context) error {
 // @Failure 500 {object} responses.UserDataResponse "Internal server error"
 // @Router /admin/login [post]
 func AdminLogin(c echo.Context) error {
+	
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -107,6 +109,7 @@ func AdminLogin(c echo.Context) error {
 		})
 	}
 	claims := services.JwtCustomClaims{
+		Id: admin.ID,
 		FirstName: admin.FirstName,
 		LastName:  admin.LastName,
 		Role:      services.Role(admin.Role),
@@ -136,6 +139,25 @@ func AdminLogin(c echo.Context) error {
 	})
 }
 
+func AdminLogout(c echo.Context) error {
+	// Create a new cookie with the same name as the one you want to delete
+	cookie := new(http.Cookie)
+	cookie.Name = "jwt"
+	// Set the cookie's expiration date in the past to delete it
+	cookie.Expires = time.Unix(0, 0)
+	// Set the path of the cookie to match the one you want to delete
+	cookie.Path = "/"
+	// Set the HTTP-only flag to true if the cookie is HTTP-only
+	cookie.HttpOnly = true
+
+	// Set the cookie in the response header to delete it
+	c.SetCookie(cookie)
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message": "Logged out",
+	})
+}
+
 func AddDepartment(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	var department dtos.AddDepartmentDto
@@ -148,6 +170,65 @@ func AddDepartment(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
 	return c.JSON(http.StatusCreated, result)
+
+}
+
+func GetAllDepartments(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var department []models.Department
+	
+	var filter bson.M
+
+	cursor, err := departmentCollection.Find(ctx, filter)
+	
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
+
+	defer cursor.Close(ctx)
+	for cursor.Next(ctx) {
+		var dep models.Department
+		if err := cursor.Decode(&dep); err != nil {
+			return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+		}
+
+		department = append(department, dep)
+	}
+	if len(department) == 0 {
+
+		return c.JSON(http.StatusOK, []models.Requistion{})
+	}
+
+	return c.JSON(http.StatusOK, department)
+}
+
+func UpdateDepartmentBudget(c echo.Context) error {
+	fmt.Println("i run")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	departmentId := c.Param("id")
+	objId, err := primitive.ObjectIDFromHex(departmentId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+	var departmentBudget struct {
+		DepartmentBudget float64 `json:"departmentBudget"`
+	}
+
+	if err := c.Bind(&departmentBudget); err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+
+	}
+	filter := bson.M{"_id": objId}
+	update := bson.M{"$set": bson.M{"departmentbudget": departmentBudget.DepartmentBudget}}
+
+	_, err = departmentCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
+	return c.JSON(http.StatusOK, "success")
 
 }
 
