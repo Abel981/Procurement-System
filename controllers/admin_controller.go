@@ -85,7 +85,6 @@ func CreateAdmin(c echo.Context) error {
 // @Failure 500 {object} responses.UserDataResponse "Internal server error"
 // @Router /admin/login [post]
 func AdminLogin(c echo.Context) error {
-	
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -108,8 +107,9 @@ func AdminLogin(c echo.Context) error {
 			"message": "Incorrect email or password",
 		})
 	}
+	fmt.Println(admin.ID)
 	claims := services.JwtCustomClaims{
-		Id: admin.ID,
+		Id:        admin.ID.Hex(),
 		FirstName: admin.FirstName,
 		LastName:  admin.LastName,
 		Role:      services.Role(admin.Role),
@@ -177,11 +177,11 @@ func GetAllDepartments(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	var department []models.Department
-	
+
 	var filter bson.M
 
 	cursor, err := departmentCollection.Find(ctx, filter)
-	
+
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
@@ -255,14 +255,12 @@ func CreateDepartmentAdmin(c echo.Context) error {
 	newDepartmentAdmin :=
 		models.DepartmentAdmin{
 			DepartmentId: objId,
-			User: models.User{
 
-				Email:          departmentAdmin.Email,
-				FirstName:      departmentAdmin.FirstName,
-				LastName:       departmentAdmin.LastName,
-				Role:           models.Role(services.DepartmentAdmin),
-				HashedPassword: string(hashedPassword),
-			},
+			Email:          departmentAdmin.Email,
+			FirstName:      departmentAdmin.FirstName,
+			LastName:       departmentAdmin.LastName,
+			Role:           models.Role(services.DepartmentAdmin),
+			HashedPassword: string(hashedPassword),
 		}
 	filter := bson.M{"_id": objId}
 	// update := bson.M{"$set": bson.M{"departmentAdmin": newDepartmentAdmin}}

@@ -27,7 +27,7 @@ func LoginDepartment(c echo.Context) error {
 	password := c.FormValue("password")
 
 	var departmentAdmin models.DepartmentAdmin
-	err := departmentAdminCollection.FindOne(ctx, bson.M{"user.email": email}).Decode(&departmentAdmin)
+	err := departmentAdminCollection.FindOne(ctx, bson.M{"email": email}).Decode(&departmentAdmin)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return c.JSON(http.StatusUnauthorized, responses.UserDataResponse{Message: "Incorrect email or password", Data: nil})
@@ -35,6 +35,9 @@ func LoginDepartment(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 	fmt.Println(departmentAdmin.DepartmentId)
+	fmt.Println("break")
+	fmt.Println(departmentAdmin.ID)
+	
 
 	err = bcrypt.CompareHashAndPassword([]byte(departmentAdmin.HashedPassword), []byte(password))
 	if err != nil {
@@ -44,13 +47,14 @@ func LoginDepartment(c echo.Context) error {
 		})
 	}
 	claims := services.JwtCustomClaims{
-		Id: departmentAdmin.ID,
+		Id: departmentAdmin.ID.Hex(),
 		Email:     departmentAdmin.Email,
 		FirstName: departmentAdmin.FirstName,
 		LastName:  departmentAdmin.LastName,
 		Role:      services.Role(departmentAdmin.Role),
 	}
 	tokenString, err := services.CreateToken(claims)
+	fmt.Println(services.ParseToken(tokenString))
 
 	if err != nil {
 
@@ -75,6 +79,25 @@ func LoginDepartment(c echo.Context) error {
 	})
 }
 
+func LogoutDepartment(c echo.Context) error {
+	// Create a new cookie with the same name as the one you want to delete
+	cookie := new(http.Cookie)
+	cookie.Name = "jwt"
+	// Set the cookie's expiration date in the past to delete it
+	cookie.Expires = time.Unix(0, 0)
+	// Set the path of the cookie to match the one you want to delete
+	cookie.Path = "/"
+	// Set the HTTP-only flag to true if the cookie is HTTP-only
+	cookie.HttpOnly = true
+
+	// Set the cookie in the response header to delete it
+	c.SetCookie(cookie)
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message": "Logged out",
+	})
+}
+
 func CreateRequistion(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -90,7 +113,7 @@ func CreateRequistion(c echo.Context) error {
 	}
 	jwtCookie, _ := c.Cookie("jwt")
 	claims, _ := services.ParseToken(jwtCookie.Value)
-	var filter = bson.M{"user.email": claims.Email}
+	var filter = bson.M{"email": claims.Email}
 	err := departmentAdminCollection.FindOne(ctx, filter).Decode(&departmentAdmin)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
@@ -125,12 +148,20 @@ func GetDepartmentRequistions(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	var requisitions []models.Requistion
-	departmentId := c.Param("deptId")
-	objId, err := primitive.ObjectIDFromHex(departmentId)
+	departmentAdminId := c.Param("deptAdminId")
+	objId, err := primitive.ObjectIDFromHex(departmentAdminId)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
 	}
-	var filter = bson.M{"departmentId": objId}
+
+	var departmentAdmin models.DepartmentAdmin
+	err = departmentAdminCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&departmentAdmin)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"message": "Unauthorized",
+		})
+	}
+	var filter = bson.M{"departmentId": departmentAdmin.DepartmentId}
 	cursor, err := requisitionCollection.Find(ctx, filter)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})

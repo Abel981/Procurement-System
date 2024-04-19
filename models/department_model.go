@@ -13,6 +13,11 @@ type Department struct {
 }
 
 type DepartmentAdmin struct {
-	User
+	ID             primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
+	Email          string             `json:"email,omitempty" validate:"required"`
+	FirstName      string             `json:"first_name,omitempty" validate:"required"`
+	LastName       string             `json:"last_name,omitempty" validate:"required"`
+	HashedPassword string             `json:"hashed_password"`
+	Role           Role               `json:"role,omitempty" validate:"required"`
 	DepartmentId   primitive.ObjectID            `json:"departmentId,omitempty" form:"department_name" validate:"required"`
 }

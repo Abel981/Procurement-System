@@ -132,7 +132,7 @@ func LoginUser(c echo.Context) error {
 		})
 	}
 	claims := services.JwtCustomClaims{
-		Id:        user.ID,
+		Id:        user.ID.Hex(),
 		Email:     user.Email,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
@@ -217,6 +217,8 @@ func CreateBid(c echo.Context) error {
 
 	jwtCookie, _ := c.Cookie("jwt")
 	claims, _ := services.ParseToken(jwtCookie.Value)
+	supplierObjectId,_ :=primitive.ObjectIDFromHex(claims.ID)
+
 	// var filter = bson.M{"email": claims.Email}
 	// err = userCollection.FindOne(ctx, filter).Decode(&user)
 	// if err != nil {
@@ -224,7 +226,7 @@ func CreateBid(c echo.Context) error {
 	// }
 	// supplierID, _ := primitive.ObjectIDFromHex(claims.ID)
 	newBid := models.Bid{
-		SupplierId:   claims.Id,
+		SupplierId:   supplierObjectId,
 		RequistionId: objectID,
 		Price:        bid.Price,
 		Status:       models.Pending,

@@ -9,6 +9,7 @@ func DepartmentRoute(e *echo.Echo) {
 	r := e.Group("/department")
     // r.POST("/signup", controllers.CreateUser) 
 	r.POST("/login", controllers.LoginDepartment)
+	r.POST("/logout", controllers.LogoutDepartment)
 	// r := e.Group("/restricted")
 	// Configure middleware with the custom claims type
 	// config := echojwt.Config{
@@ -23,6 +24,6 @@ func DepartmentRoute(e *echo.Echo) {
 
 	// r.GET("/:id", controllers.GetAUser)
 	r.POST("/createrequistion", controllers.CreateRequistion)
-	r.GET("/requisitions:deptId", controllers.GetDepartmentRequistions)
+	r.GET("/requisitions/:deptAdminId", controllers.GetDepartmentRequistions)
 	
 }

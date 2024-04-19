@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+
 )
    
    type Role string
@@ -17,7 +17,7 @@ const (
 )
 
 type JwtCustomClaims struct {
-	Id primitive.ObjectID `json:"id"`
+	Id string `json:"id"`
 	Email string `json:"email"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
