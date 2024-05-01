@@ -13,4 +13,6 @@ type Bid struct {
 	Price        float64            `bson:"price" json:"price"`
 	Status       RequistionStatus   `bson:"status"  json:"status"`
 	CreatedAt    time.Time          `bson:"createdAt" json:"createdAt"`
+	DocumentUrl string `bson:"documentUrl" json:"documentUrl"`
+	
 }

@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	
+	"fmt"
 	"net/http"
 	"procrument-system/configs"
 	"procrument-system/models"
@@ -17,6 +17,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/context"
+
+	"github.com/cloudinary/cloudinary-go/v2"
+
+	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 )
 
 var userCollection *mongo.Collection = configs.GetCollection(configs.DB, "users")
@@ -44,7 +48,7 @@ func CreateUser(c echo.Context) error {
 
 	//validate the request body
 	if err := c.Bind(&user); err != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
 
 	isFound, err := checkUserExistence(ctx, user.Email)
@@ -59,7 +63,7 @@ func CreateUser(c echo.Context) error {
 		})
 	}
 	if validationErr := validate.Struct(&user); validationErr != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"data": validationErr.Error()}})
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": validationErr.Error()}})
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
@@ -81,10 +85,10 @@ func CreateUser(c echo.Context) error {
 
 	result, err := userCollection.InsertOne(ctx, newUser)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
 
-	return c.JSON(http.StatusCreated, responses.UserDataResponse{ Message: "success", Data: &map[string]interface{}{"data": result}})
+	return c.JSON(http.StatusCreated, responses.UserDataResponse{Message: "success", Data: &map[string]interface{}{"data": result}})
 }
 
 func GetAUser(c echo.Context) error {
@@ -94,7 +98,7 @@ func GetAUser(c echo.Context) error {
 	userId := c.Param("id")
 	objId, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{ Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 
 	var user models.User
@@ -103,10 +107,10 @@ func GetAUser(c echo.Context) error {
 		if err == mongo.ErrNoDocuments {
 			return c.JSON(http.StatusNotFound, responses.UserDataResponse{Message: "user not found", Data: nil})
 		}
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 
-	return c.JSON(http.StatusOK, responses.UserDataResponse{ Message: "success", Data: &map[string]interface{}{"user": user}})
+	return c.JSON(http.StatusOK, responses.UserDataResponse{Message: "success", Data: &map[string]interface{}{"user": user}})
 }
 
 func LoginUser(c echo.Context) error {
@@ -120,9 +124,9 @@ func LoginUser(c echo.Context) error {
 	err := userCollection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return c.JSON(http.StatusUnauthorized, responses.UserDataResponse{ Message: "Incorrect email or password", Data: nil})
+			return c.JSON(http.StatusUnauthorized, responses.UserDataResponse{Message: "Incorrect email or password", Data: nil})
 		}
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(user.HashedPassword), []byte(password))
 	if err != nil {
@@ -142,7 +146,7 @@ func LoginUser(c echo.Context) error {
 
 	if err != nil {
 
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 	// token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
@@ -187,6 +191,17 @@ func CreateBid(c echo.Context) error {
 	// var user models.User
 	var requisition models.Requistion
 	defer cancel()
+	file, err := c.FormFile("imageFile")
+	if err != nil {
+		return err
+	}
+
+	// Open uploaded file
+	src, err := file.Open()
+	if err != nil {
+		return err
+	}
+	defer src.Close()
 	// requisitionId := c.Param("reqId")
 	// objectID, err := primitive.ObjectIDFromHex(requisitionId)
 	// if err != nil {
@@ -195,29 +210,35 @@ func CreateBid(c echo.Context) error {
 	// }
 
 	if err := c.Bind(&bid); err != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
+	fmt.Println("hey 1")
 	objectID, err := primitive.ObjectIDFromHex(bid.RequistionId)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{ Message: "Incorrect email or password", Data: nil})
-
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "Incorrect email or password", Data: nil})
+		
 	}
+	fmt.Println("hey 2")
 	err = requisitionCollection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&requisition)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "Incorrect email or password", Data: nil})
 		}
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
 	}
+	fmt.Println("hey 3")
 
 	//todo add required tag in bid dto
 	if validationErr := validate.Struct(&bid); validationErr != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"data": validationErr.Error()}})
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": validationErr.Error()}})
 	}
+	var credentials = configs.EnvCloudinaryCredentials()
+	cld, _ := cloudinary.NewFromParams(credentials.CloudName, credentials.ApiKey, credentials.ApiSecret)
+	resp, err := cld.Upload.Upload(ctx, src, uploader.UploadParams{})
 
 	jwtCookie, _ := c.Cookie("jwt")
 	claims, _ := services.ParseToken(jwtCookie.Value)
-	supplierObjectId,_ :=primitive.ObjectIDFromHex(claims.ID)
+	supplierObjectId, _ := primitive.ObjectIDFromHex(claims.ID)
 
 	// var filter = bson.M{"email": claims.Email}
 	// err = userCollection.FindOne(ctx, filter).Decode(&user)
@@ -231,14 +252,13 @@ func CreateBid(c echo.Context) error {
 		Price:        bid.Price,
 		Status:       models.Pending,
 		CreatedAt:    time.Now(),
+		DocumentUrl:  resp.SecureURL,
 	}
 	result, err := bidCollection.InsertOne(ctx, newBid)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
-	return c.JSON(http.StatusCreated, responses.UserDataResponse{ Message: "success", Data: &map[string]interface{}{"data": result}})
-
-
+	return c.JSON(http.StatusCreated, responses.UserDataResponse{Message: "success", Data: &map[string]interface{}{"data": result}})
 
 }
 
@@ -249,7 +269,7 @@ func GetRequisitionById(c echo.Context) error {
 	requisitionId := c.Param("id")
 	objId, err := primitive.ObjectIDFromHex(requisitionId)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{ Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 
 	var requisition models.Requistion
@@ -258,10 +278,8 @@ func GetRequisitionById(c echo.Context) error {
 		if err == mongo.ErrNoDocuments {
 			return c.JSON(http.StatusNotFound, responses.UserDataResponse{Message: "user not found", Data: nil})
 		}
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{ Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 
 	return c.JSON(http.StatusOK, requisition)
 }
-
-
