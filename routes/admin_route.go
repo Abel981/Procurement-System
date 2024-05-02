@@ -15,8 +15,11 @@ func AdminRoute(e *echo.Echo)  {
   e.GET("/admin/departments", controllers.GetAllDepartments)
   e.PATCH("/admin/updatedepartmentbudget/:id", controllers.UpdateDepartmentBudget)
   e.GET("/admin/getrequistions", controllers.GetAllRequisitions)
-  e.PATCH("/admin/updaterequistion/:id", controllers.ChangeRequistionStatus)
+  e.GET("/admin/requistion/:id", controllers.GetRequisitionById)
+  e.PATCH("/admin/approverequistion/:id", controllers.ApproveRequistion)
+  e.DELETE("/admin/deleterequistion/:id", controllers.DeleteRequistion)
   e.PATCH("/admin/approvebid/:bidId", controllers.ApproveBid)
+
   e.GET("/admin/getbids/:reqId", controllers.GetAllBids)
 
 }

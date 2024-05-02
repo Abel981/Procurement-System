@@ -25,6 +25,6 @@ func UserRoute(e *echo.Echo) {
 	r.GET("/:id", controllers.GetAUser)
 	r.POST("/createbid", controllers.CreateBid)
 	r.GET("/requistions", controllers.GetAllRequisitions)
-	r.GET("/requisition/:id", controllers.GetRequisitionById)
+	r.GET("/requistion/:id", controllers.GetRequisitionById)
 
 }

@@ -227,19 +227,26 @@ func CreateBid(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 	fmt.Println("hey 3")
-
+	
 	//todo add required tag in bid dto
 	if validationErr := validate.Struct(&bid); validationErr != nil {
 		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": validationErr.Error()}})
 	}
+	fmt.Println("hey 4")
 	var credentials = configs.EnvCloudinaryCredentials()
 	cld, _ := cloudinary.NewFromParams(credentials.CloudName, credentials.ApiKey, credentials.ApiSecret)
 	resp, err := cld.Upload.Upload(ctx, src, uploader.UploadParams{})
-
+	if err != nil {
+		fmt.Println("error uploading")
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+	
 	jwtCookie, _ := c.Cookie("jwt")
 	claims, _ := services.ParseToken(jwtCookie.Value)
-	supplierObjectId, _ := primitive.ObjectIDFromHex(claims.ID)
-
+	supplierObjectId, _ := primitive.ObjectIDFromHex(claims.Id)
+	fmt.Println(claims.Id)
+	fmt.Println("hey 5")
+	
 	// var filter = bson.M{"email": claims.Email}
 	// err = userCollection.FindOne(ctx, filter).Decode(&user)
 	// if err != nil {
@@ -258,8 +265,9 @@ func CreateBid(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
+	fmt.Println("hey 6")
 	return c.JSON(http.StatusCreated, responses.UserDataResponse{Message: "success", Data: &map[string]interface{}{"data": result}})
-
+	
 }
 
 func GetRequisitionById(c echo.Context) error {
@@ -267,10 +275,12 @@ func GetRequisitionById(c echo.Context) error {
 	defer cancel()
 
 	requisitionId := c.Param("id")
+	fmt.Println(requisitionId)
 	objId, err := primitive.ObjectIDFromHex(requisitionId)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
 	}
+	fmt.Println("hey 2")
 
 	var requisition models.Requistion
 	err = requisitionCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&requisition)

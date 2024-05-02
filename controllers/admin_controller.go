@@ -307,7 +307,7 @@ func GetAllRequisitions(c echo.Context) error {
 	return c.JSON(http.StatusOK, requistion)
 }
 
-func ChangeRequistionStatus(c echo.Context) error {
+func ApproveRequistion(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -316,18 +316,45 @@ func ChangeRequistionStatus(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
 	}
-	var requistionStatus struct {
-		Status string `json:"status"`
-	}
+	// var requistionStatus struct {
+	// 	Status string `json:"status"`
+	// }
 
-	if err := c.Bind(&requistionStatus); err != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	// if err := c.Bind(&requistionStatus); err != nil {
+	// 	return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 
-	}
+	// }
 	filter := bson.M{"_id": objId}
-	update := bson.M{"$set": bson.M{"status": requistionStatus.Status}}
+	update := bson.M{"$set": bson.M{"status": models.Approved}}
 
 	_, err = requisitionCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
+	return c.JSON(http.StatusOK, "success")
+
+}
+func DeleteRequistion(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	requistionId := c.Param("id")
+	objId, err := primitive.ObjectIDFromHex(requistionId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+	// var requistionStatus struct {
+	// 	Status string `json:"status"`
+	// }
+
+	// if err := c.Bind(&requistionStatus); err != nil {
+	// 	return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+
+	// }
+	filter := bson.M{"_id": objId}
+	
+
+	_, err = requisitionCollection.DeleteOne(ctx, filter)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
@@ -421,6 +448,7 @@ func ApproveBid(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "Bid accepted successfully"})
 }
+
 
 // func ApproveBid(c echo.Context) error {
 // 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
