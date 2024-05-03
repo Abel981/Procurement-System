@@ -277,35 +277,46 @@ func CreateDepartmentAdmin(c echo.Context) error {
 }
 
 func GetAllRequisitions(c echo.Context) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	var requistion []models.Requistion
-	requisitionStatus := c.QueryParam("status")
-	var filter bson.M
-	if requisitionStatus != "" {
-		filter = bson.M{"status": requisitionStatus}
-	}
-	cursor, err := requisitionCollection.Find(ctx, filter)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
-	}
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+    
+    var requistion []models.Requistion
+    itemName := c.QueryParam("itemName")
+    requisitionStatus := c.QueryParam("status")
+    filter := bson.M{} // Initialize the filter map here
 
-	defer cursor.Close(ctx)
-	for cursor.Next(ctx) {
-		var req models.Requistion
-		if err := cursor.Decode(&req); err != nil {
-			return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
-		}
+    if requisitionStatus != "" {
+        filter["status"] = requisitionStatus
+    }
 
-		requistion = append(requistion, req)
-	}
-	if len(requistion) == 0 {
+    if itemName != "" {
+        regexPattern := bson.M{"$regex": itemName, "$options": "i"}
+        filter["itemName"] = regexPattern
+    }
 
-		return c.JSON(http.StatusOK, []models.Requistion{})
-	}
+    cursor, err := requisitionCollection.Find(ctx, filter)
+    if err != nil {
+        return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+    }
 
-	return c.JSON(http.StatusOK, requistion)
+    defer cursor.Close(ctx)
+    
+    for cursor.Next(ctx) {
+        var req models.Requistion
+        if err := cursor.Decode(&req); err != nil {
+            return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+        }
+
+        requistion = append(requistion, req)
+    }
+
+    if len(requistion) == 0 {
+        return c.JSON(http.StatusOK, []models.Requistion{})
+    }
+
+    return c.JSON(http.StatusOK, requistion)
 }
+
 
 func ApproveRequistion(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
