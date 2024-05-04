@@ -26,5 +26,7 @@ func UserRoute(e *echo.Echo) {
 	r.POST("/createbid", controllers.CreateBid)
 	r.GET("/requistions", controllers.GetAllRequisitions)
 	r.GET("/requistion/:id", controllers.GetRequisitionById)
+	r.GET("/get-password-reset-code", controllers.GetPasswordResetCode)
+	r.GET("/password-reset", controllers.VerifyPasswordReset)
 
 }

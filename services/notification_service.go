@@ -11,9 +11,11 @@ import (
 )
 
 type EmailRecipientData struct {
+	Id string
 	Email     string
 	FirstName string
 	LastName  string
+	ResetPasswordText string
 }
 
 func SendEmail(receiverData EmailRecipientData, templatePath string) error {

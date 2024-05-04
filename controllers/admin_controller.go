@@ -204,7 +204,6 @@ func GetAllDepartments(c echo.Context) error {
 }
 
 func UpdateDepartmentBudget(c echo.Context) error {
-	fmt.Println("i run")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

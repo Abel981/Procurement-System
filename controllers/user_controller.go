@@ -8,6 +8,7 @@ import (
 	"procrument-system/models/dtos"
 	"procrument-system/responses"
 	"procrument-system/services"
+	"procrument-system/utils"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -25,6 +26,8 @@ import (
 
 var userCollection *mongo.Collection = configs.GetCollection(configs.DB, "users")
 var bidCollection *mongo.Collection = configs.GetCollection(configs.DB, "bids")
+var verificationCollection *mongo.Collection = configs.GetCollection(configs.DB, "verification")
+
 var validate = validator.New()
 
 func checkUserExistence(ctx context.Context, email string) (bool, error) {
@@ -216,7 +219,7 @@ func CreateBid(c echo.Context) error {
 	objectID, err := primitive.ObjectIDFromHex(bid.RequistionId)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "Incorrect email or password", Data: nil})
-		
+
 	}
 	fmt.Println("hey 2")
 	err = requisitionCollection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&requisition)
@@ -227,7 +230,7 @@ func CreateBid(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 	fmt.Println("hey 3")
-	
+
 	//todo add required tag in bid dto
 	if validationErr := validate.Struct(&bid); validationErr != nil {
 		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": validationErr.Error()}})
@@ -240,13 +243,13 @@ func CreateBid(c echo.Context) error {
 		fmt.Println("error uploading")
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
 	}
-	
+
 	jwtCookie, _ := c.Cookie("jwt")
 	claims, _ := services.ParseToken(jwtCookie.Value)
 	supplierObjectId, _ := primitive.ObjectIDFromHex(claims.Id)
 	fmt.Println(claims.Id)
 	fmt.Println("hey 5")
-	
+
 	// var filter = bson.M{"email": claims.Email}
 	// err = userCollection.FindOne(ctx, filter).Decode(&user)
 	// if err != nil {
@@ -267,7 +270,7 @@ func CreateBid(c echo.Context) error {
 	}
 	fmt.Println("hey 6")
 	return c.JSON(http.StatusCreated, responses.UserDataResponse{Message: "success", Data: &map[string]interface{}{"data": result}})
-	
+
 }
 
 func GetRequisitionById(c echo.Context) error {
@@ -292,4 +295,123 @@ func GetRequisitionById(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, requisition)
+}
+
+func GetPasswordResetCode(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	email := c.FormValue("email")
+
+	var user models.User
+	err := userCollection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return c.JSON(http.StatusUnauthorized, responses.UserDataResponse{Message: "Incorrect email or password", Data: nil})
+		}
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+
+	code := utils.GenerateRandomString(10)
+
+	services.SendEmail(services.EmailRecipientData{
+		Id:                user.ID.Hex(),
+		FirstName:         user.FirstName,
+		LastName:          user.LastName,
+		Email:             user.Email,
+		ResetPasswordText: code,
+	}, "./templates/reset_password.html")
+	verificationData := &models.VerificationData{
+
+		Email:     user.Email,
+		Code:      code,
+		Type:      "reset_password",
+		ExpiresAt: time.Now().Add(30 * time.Minute),
+	}
+
+	_, err = verificationCollection.InsertOne(ctx, verificationData)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"data": err.Error()})
+	}
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message": "Please check your mail for password reset code",
+	})
+}
+
+func VerifyPasswordReset(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var resetPasswordBody dtos.ResetPasswordVerificationDto
+	var verificationData models.VerificationData
+
+	if err := c.Bind(&resetPasswordBody); err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
+
+	var filter = bson.M{"code": resetPasswordBody.Code, "type": "reset_password"}
+	_ = verificationCollection.FindOne(ctx, filter).Decode(&verificationData)
+
+	if resetPasswordBody.Code != verificationData.Code || resetPasswordBody.Type != verificationData.Type {
+		return c.JSON(http.StatusNotAcceptable, map[string]interface{}{
+			"message": "The request is not acceptable",
+		})
+	}
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"resetCode": verificationData.Code,
+	})
+}
+
+func ResetPassword(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	userId := c.Param("id")
+	secretCode := c.Param("secret")
+	var user models.User
+	var resetPasswordBody dtos.ResetPasswordDto
+	var verificationData models.VerificationData
+	if err := c.Bind(&resetPasswordBody); err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
+	err := userCollection.FindOne(ctx, bson.M{"_id": userId}).Decode(&user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return c.JSON(http.StatusUnauthorized, responses.UserDataResponse{Message: "Incorrect email or password", Data: nil})
+		}
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+	err = verificationCollection.FindOne(ctx, bson.M{"email": user.Email}).Decode(&verificationData)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"data": err.Error()})
+	}
+
+	if verificationData.Code != secretCode {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+
+	}
+
+	if resetPasswordBody.Password != resetPasswordBody.ConfirmPassword  {
+		return c.JSON(http.StatusNotAcceptable, map[string]interface{}{
+			"message": "Password and re-entered Password are not same",
+		})
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(resetPasswordBody.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"message": "Internal server error! please try again",
+		})
+	}
+
+	filter := bson.M{"_id": user.ID}
+	update := bson.M{"hashedPassword": string(hashedPassword)}
+
+	_, err = userCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
+
+	_, err = verificationCollection.DeleteOne(ctx, bson.M{"email": verificationData.Email, "type": "reset_password"})
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
+	return c.JSON(http.StatusOK, "password reset successfully")
 }
