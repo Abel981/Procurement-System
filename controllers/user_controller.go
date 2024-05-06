@@ -365,13 +365,18 @@ func ResetPassword(c echo.Context) error {
 	defer cancel()
 	userId := c.Param("id")
 	secretCode := c.Param("secret")
+	objId, err := primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
+	}
 	var user models.User
 	var resetPasswordBody dtos.ResetPasswordDto
 	var verificationData models.VerificationData
 	if err := c.Bind(&resetPasswordBody); err != nil {
 		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
-	err := userCollection.FindOne(ctx, bson.M{"_id": userId}).Decode(&user)
+	fmt.Println("hey 1")
+	err = userCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&user)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return c.JSON(http.StatusUnauthorized, responses.UserDataResponse{Message: "Incorrect email or password", Data: nil})
@@ -384,7 +389,7 @@ func ResetPassword(c echo.Context) error {
 	}
 
 	if verificationData.Code != secretCode {
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": "internal sserver error"}})
 
 	}
 
@@ -401,8 +406,8 @@ func ResetPassword(c echo.Context) error {
 		})
 	}
 
-	filter := bson.M{"_id": user.ID}
-	update := bson.M{"hashedPassword": string(hashedPassword)}
+	filter := bson.M{"_id": objId}
+	update := bson.M{"$set": bson.M{"hashedpassword": string(hashedPassword)}}
 
 	_, err = userCollection.UpdateOne(ctx, filter, update)
 	if err != nil {

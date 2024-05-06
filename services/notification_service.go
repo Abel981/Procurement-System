@@ -37,9 +37,13 @@ func SendEmail(receiverData EmailRecipientData, templatePath string) error {
 	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 
 	t.Execute(&body, struct {
+		Id string
 		Name string
+		ResetPasswordText string
 	}{
 		Name: receiverData.FirstName + " " + receiverData.LastName,
+		Id: receiverData.Id,
+		ResetPasswordText: receiverData.ResetPasswordText,
 	})
 	m.SetHeader("To", receiverData.Email)
 	m.SetBody("text/html", body.String())

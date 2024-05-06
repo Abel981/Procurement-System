@@ -19,8 +19,8 @@ type Enforcer struct {
 func (e *Enforcer) Enforce(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 
-	
-		if c.Path() == "/user/login" || c.Path() == "/user/signup" || c.Path() == "/user/get-password-reset-code" || c.Path() == "/admin/login" || c.Path() == "/admin/signup"  || c.Path() == "/department/login" || c.Path() == "/swagger/*"  {
+	fmt.Println(c.Path())
+		if c.Path() == "/user/login" || c.Path() == "/user/signup" || c.Path() == "/user/get-password-reset-code" || c.Path() == "/admin/login" || c.Path() == "/admin/signup" || c.Path() == "/user/password-reset/:id/:secret" || c.Path() == "/department/login" || c.Path() == "/swagger/*"  {
 
 			return next(c)
 		}
