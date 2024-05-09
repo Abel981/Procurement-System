@@ -9,7 +9,7 @@ type Department struct {
 	ID               primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
 	DepartmentName   string             `json:"departmentName,omitempty" form:"departmentName" validate:"required"`
 	DepartmentBudget int    `json:"departmentBudget,omitempty" form:"departmentBudget" validate:"required"`
-	DepartmentAdmin  User               `json:"departmentAdmin,omitempty" form:"departmentAdmin" bson:"departmentAdmin" `
+	DepartmentAdminId  string               `json:"departmentAdminId,omitempty" form:"departmentAdminId" bson:"departmentAdminId" `
 }
 
 type DepartmentAdmin struct {

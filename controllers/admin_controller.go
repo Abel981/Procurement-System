@@ -202,6 +202,29 @@ func GetAllDepartments(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, department)
 }
+func GetDepartmentById(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	departmentId := c.Param("id")
+
+	objId, err := primitive.ObjectIDFromHex(departmentId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+
+
+	var department models.Department
+	err = departmentCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&department)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return c.JSON(http.StatusNotFound, responses.UserDataResponse{Message: "user not found", Data: nil})
+		}
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+
+	return c.JSON(http.StatusOK, department)
+}
 
 func UpdateDepartmentBudget(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -273,6 +296,97 @@ func CreateDepartmentAdmin(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, "success")
 
+}
+func GetAllDeptAdmin(c echo.Context) error {
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+    
+    var deptAdmin []models.DepartmentAdmin
+ 
+    filter := bson.M{} // Initialize the filter map here
+
+
+
+    cursor, err := departmentAdminCollection.Find(ctx, filter)
+    if err != nil {
+        return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+    }
+
+    defer cursor.Close(ctx)
+    
+    for cursor.Next(ctx) {
+        var dAdmin models.DepartmentAdmin
+        if err := cursor.Decode(&dAdmin); err != nil {
+            return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+        }
+
+        deptAdmin = append(deptAdmin, dAdmin)
+    }
+
+    if len(deptAdmin) == 0 {
+        return c.JSON(http.StatusOK, []models.Requistion{})
+    }
+
+    return c.JSON(http.StatusOK, deptAdmin)
+}
+func DeleteDepartmentAdmin(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	departmentId := c.Param("id")
+	objId, err := primitive.ObjectIDFromHex(departmentId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "Invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+
+	// Define the filter to delete the department admin
+	filter := bson.M{"_id": objId}
+	_, err = departmentAdminCollection.DeleteOne(ctx, filter)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "Error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
+
+	// Remove departmentAdminId field from the department collection
+	_, err = departmentCollection.UpdateOne(ctx, bson.M{"departmentAdminId": objId}, bson.M{"$unset": bson.M{"departmentAdminId": ""}})
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "Error updating department", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+
+	return c.JSON(http.StatusOK, "Success")
+}
+
+func GetRequisitionsByDepId(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+var requisition []models.Requistion
+	departmentId := c.Param("deptId")
+	
+	objId, err := primitive.ObjectIDFromHex(departmentId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+
+	cursor, err := requisitionCollection.Find(ctx , bson.M{"departmentId": objId,"status": "approved"})
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
+	defer cursor.Close(ctx)
+	for cursor.Next(ctx) {
+		var req models.Requistion
+		if err := cursor.Decode(&req); err != nil {
+			return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+		}
+
+		requisition = append(requisition, req)
+	}
+	if len(requisition) == 0 {
+
+		return c.JSON(http.StatusOK, []models.Requistion{})
+	}
+	
+	return c.JSON(http.StatusOK, requisition)
+
+	
 }
 
 func GetAllRequisitions(c echo.Context) error {

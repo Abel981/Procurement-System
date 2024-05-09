@@ -7,5 +7,5 @@ type AdminLoginDTO struct {
 
 type AddDepartmentDto struct {
 	DepartmentName   string  `json:"department_name,omitempty" form:"department_name" validate:"required"`
-	DepartmentBudget float64 `json:"department_budget,omitempty" form:"department_bidget" validate:"required"`
+	DepartmentBudget float64 `json:"department_budget,omitempty" form:"department_budget" validate:"required"`
 }

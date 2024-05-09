@@ -297,6 +297,7 @@ func GetRequisitionById(c echo.Context) error {
 	return c.JSON(http.StatusOK, requisition)
 }
 
+
 func GetPasswordResetCode(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
