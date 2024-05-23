@@ -27,6 +27,8 @@ import (
 var userCollection *mongo.Collection = configs.GetCollection(configs.DB, "users")
 var bidCollection *mongo.Collection = configs.GetCollection(configs.DB, "bids")
 var verificationCollection *mongo.Collection = configs.GetCollection(configs.DB, "verification")
+var bookmarkCollection *mongo.Collection = configs.GetCollection(configs.DB, "bookmarks")
+var gigCollection *mongo.Collection = configs.GetCollection(configs.DB, "gigs")
 
 var validate = validator.New()
 
@@ -272,6 +274,145 @@ func CreateBid(c echo.Context) error {
 	return c.JSON(http.StatusCreated, responses.UserDataResponse{Message: "success", Data: &map[string]interface{}{"data": result}})
 
 }
+func CreateBookmark(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	requisitionId := c.Param("reqId")
+	reqId, err := primitive.ObjectIDFromHex(requisitionId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+	jwtCookie, _ := c.Cookie("jwt")
+	claims, _ := services.ParseToken(jwtCookie.Value)
+	supplierObjectId, _ := primitive.ObjectIDFromHex(claims.Id)
+
+	newBookmark := models.Bookmark{
+		SupplierId:   supplierObjectId,
+		RequistionId: reqId,
+		CreatedAt:    time.Now(),
+	}
+
+	_, err = bookmarkCollection.InsertOne(ctx, newBookmark)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message": "bookmark created",
+	})
+}
+func GetBookmarks(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var bookmarks []models.Bookmark
+
+	jwtCookie, _ := c.Cookie("jwt")
+	claims, _ := services.ParseToken(jwtCookie.Value)
+	supplierObjectId, _ := primitive.ObjectIDFromHex(claims.Id)
+	cursor, err := bookmarkCollection.Find(ctx, bson.M{"supplierId": supplierObjectId})
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
+	defer cursor.Close(ctx)
+	for cursor.Next(ctx) {
+		var bk models.Bookmark
+		if err := cursor.Decode(&bk); err != nil {
+			return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+		}
+
+		bookmarks = append(bookmarks, bk)
+	}
+
+	if len(bookmarks) == 0 {
+		return c.JSON(http.StatusOK, []models.Bookmark{})
+	}
+
+	return c.JSON(http.StatusOK, bookmarks)
+}
+
+func CreateGig(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	var gigDto dtos.GigDto
+
+	defer cancel()
+	jwtCookie, _ := c.Cookie("jwt")
+	claims, _ := services.ParseToken(jwtCookie.Value)
+	supplierObjectId, _ := primitive.ObjectIDFromHex(claims.Id)
+	if err := c.Bind(&gigDto); err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
+	err := c.Request().ParseMultipartForm(32 << 20) // 32 MB limit
+	if err != nil {
+		return err
+	}
+
+	files := c.Request().MultipartForm.File["imageFile"]
+	var imageUrls []string
+	var credentials = configs.EnvCloudinaryCredentials()
+	// Iterate over each file
+	for _, fileHeader := range files {
+		// Open uploaded file
+		file, err := fileHeader.Open()
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		// Upload file to Cloudinary
+		cld, _ := cloudinary.NewFromParams(credentials.CloudName, credentials.ApiKey, credentials.ApiSecret)
+		resp, err := cld.Upload.Upload(ctx, file, uploader.UploadParams{})
+		if err != nil {
+			fmt.Println("error uploading")
+			return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+		}
+
+		// Append the URL of the uploaded image to imageUrls
+		imageUrls = append(imageUrls, resp.SecureURL)
+	}
+
+	newGig := models.Gig{
+		SupplierId:  supplierObjectId,
+		Title:       gigDto.Title,
+		Description: gigDto.Description,
+		Price:       gigDto.Price,
+		ImagesUrl:   imageUrls,
+		CreatedAt:   time.Now(),
+	}
+	_, err = gigCollection.InsertOne(ctx, newGig)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message": "gig created",
+	})
+}
+func GetSupplierGigs(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var gigs []models.Gig
+	jwtCookie, _ := c.Cookie("jwt")
+	claims, _ := services.ParseToken(jwtCookie.Value)
+	supplierObjectId, _ := primitive.ObjectIDFromHex(claims.Id)
+	cursor, err := gigCollection.Find(ctx, bson.M{"supplierId": supplierObjectId})
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
+	defer cursor.Close(ctx)
+	for cursor.Next(ctx) {
+		var gig models.Gig
+		if err := cursor.Decode(&gig); err != nil {
+			return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+		}
+
+		gigs = append(gigs, gig)
+	}
+	if len(gigs) == 0 {
+		return c.JSON(http.StatusOK, []models.Gig{})
+	}
+
+	return c.JSON(http.StatusOK, gigs)
+}
 
 func GetRequisitionById(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -296,7 +437,6 @@ func GetRequisitionById(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, requisition)
 }
-
 
 func GetPasswordResetCode(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -394,7 +534,7 @@ func ResetPassword(c echo.Context) error {
 
 	}
 
-	if resetPasswordBody.Password != resetPasswordBody.ConfirmPassword  {
+	if resetPasswordBody.Password != resetPasswordBody.ConfirmPassword {
 		return c.JSON(http.StatusNotAcceptable, map[string]interface{}{
 			"message": "Password and re-entered Password are not same",
 		})
