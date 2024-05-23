@@ -26,5 +26,7 @@ func DepartmentRoute(e *echo.Echo) {
 	r.POST("/createrequistion", controllers.CreateRequistion)
 	r.GET("/requisitions/:deptAdminId", controllers.GetDepartmentRequistions)
 	r.GET("/gigs", controllers.GetGigs)
+	r.GET("/gig/:id", controllers.GetGigById)
+	r.GET("/supplier/:id", controllers.GetAUser)
 	
 }

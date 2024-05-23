@@ -211,3 +211,26 @@ func GetGigs(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, gigs)
 }
+func GetGigById(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	gigId := c.Param("id")
+	objId, err := primitive.ObjectIDFromHex(gigId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+
+
+	var gig models.Gig
+	err = gigCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&gig)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return c.JSON(http.StatusNotFound, responses.UserDataResponse{Message: "user not found", Data: nil})
+		}
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+
+	return c.JSON(http.StatusOK, gig)
+
+}

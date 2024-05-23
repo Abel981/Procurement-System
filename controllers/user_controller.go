@@ -116,7 +116,7 @@ func GetAUser(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
 	}
 
-	return c.JSON(http.StatusOK, responses.UserDataResponse{Message: "success", Data: &map[string]interface{}{"user": user}})
+	return c.JSON(http.StatusOK, user)
 }
 
 func LoginUser(c echo.Context) error {
