@@ -17,7 +17,7 @@ import (
 // Gig represents a gig promoting supplier offerings
 type Gig struct {
 	Id          primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
-	SupplierID  primitive.ObjectID `bson:"supplierId,omitempty" json:"supplierId"`
+	SupplierId  primitive.ObjectID `bson:"supplierId,omitempty" json:"supplierId"`
 	Title       string             `bson:"title,omitempty" json:"title"`
 	ImagesUrl   []string           `bson:"imagesUrl" json:"imagesUrl"`
 	Price       float64            `bson:"price" json:"price"`

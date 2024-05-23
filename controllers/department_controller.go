@@ -183,3 +183,31 @@ func GetDepartmentRequistions(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, requisitions)
 }
+func GetGigs(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var gigs []models.Gig
+
+	
+	var filter = bson.M{}
+	cursor, err := gigCollection.Find(ctx, filter)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
+
+	defer cursor.Close(ctx)
+	for cursor.Next(ctx) {
+		var gig models.Gig
+		if err := cursor.Decode(&gig); err != nil {
+			return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+		}
+
+		gigs = append(gigs, gig)
+	}
+	if len(gigs) == 0 {
+
+		return c.JSON(http.StatusOK, []models.Requistion{})
+	}
+
+	return c.JSON(http.StatusOK, gigs)
+}

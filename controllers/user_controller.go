@@ -84,6 +84,7 @@ func CreateUser(c echo.Context) error {
 		Email:          user.Email,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
+		Location: user.Country,
 		Role:           "user",
 		HashedPassword: string(hashedPassword),
 	}
@@ -346,7 +347,7 @@ func CreateGig(c echo.Context) error {
 		return err
 	}
 
-	files := c.Request().MultipartForm.File["imageFile"]
+	files := c.Request().MultipartForm.File["images"]
 	var imageUrls []string
 	var credentials = configs.EnvCloudinaryCredentials()
 	// Iterate over each file
