@@ -84,7 +84,7 @@ func CreateUser(c echo.Context) error {
 		Email:          user.Email,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
-		Location: user.Country,
+		Location:       user.Country,
 		Role:           "user",
 		HashedPassword: string(hashedPassword),
 	}
@@ -231,6 +231,10 @@ func CreateBid(c echo.Context) error {
 			return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "Incorrect email or password", Data: nil})
 		}
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+	if time.Now().After(requisition.EndDate) {
+
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"messege": "Auction deadline has passed"})
 	}
 	fmt.Println("hey 3")
 

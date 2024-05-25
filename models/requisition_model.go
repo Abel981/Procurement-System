@@ -24,4 +24,6 @@ type Requistion struct {
 	Quantity     int                `bson:"quantity" json:"quantity"`
 	Status       RequistionStatus   `bson:"status" json:"status"`
 	CreatedAt    time.Time          `bson:"createdAt" json:"createdAt"`
+	EndDate    time.Time          `bson:"endDate" json:"endDate"`
+	
 }

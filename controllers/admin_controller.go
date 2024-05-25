@@ -25,6 +25,20 @@ var departmentCollection *mongo.Collection = configs.GetCollection(configs.DB, "
 var departmentAdminCollection *mongo.Collection = configs.GetCollection(configs.DB, "departmentAdmin")
 var requisitionCollection *mongo.Collection = configs.GetCollection(configs.DB, "requisition")
 
+func checkDepartmentExistence(ctx context.Context, name string) (bool, error) {
+
+	result := departmentCollection.FindOne(ctx, bson.M{"departmentname": name})
+
+	if result.Err() != nil {
+		if result.Err() == mongo.ErrNoDocuments {
+			return false, nil
+		}
+		return false, result.Err()
+	}
+
+	return true, nil
+}
+
 // CreateAdmin creates a new admin user.
 //
 //	@Summary		Create a new admin user
@@ -84,6 +98,8 @@ func CreateAdmin(c echo.Context) error {
 // @Failure 401 {object} responses.UserDataResponse "Unauthorized: Incorrect email or password"
 // @Failure 500 {object} responses.UserDataResponse "Internal server error"
 // @Router /admin/login [post]
+
+
 func AdminLogin(c echo.Context) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -162,9 +178,20 @@ func AddDepartment(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	var department dtos.AddDepartmentDto
 	defer cancel()
+
 	if err := c.Bind(&department); err != nil {
 		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
 	}
+	isFound, err := checkDepartmentExistence(ctx,department.DepartmentName)
+	if err!= nil {
+        return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+    }
+
+	if isFound {
+        return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"message": "Department Already Exists!",
+		})
+    }
 	result, err := departmentCollection.InsertOne(ctx, department)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
@@ -434,6 +461,55 @@ func GetAllRequisitions(c echo.Context) error {
 func ApproveRequistion(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+var approveReqDto dtos.ApproveReqDto 
+if err := c.Bind(&approveReqDto); err != nil {
+	return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+}
+	requistionId := c.Param("id")
+	objId, err := primitive.ObjectIDFromHex(requistionId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+	// var requistionStatus struct {
+	// 	Status string `json:"status"`
+	// }
+
+	// if err := c.Bind(&requistionStatus); err != nil {
+	// 	return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+
+	// }
+	filter := bson.M{"_id": objId}
+	update := bson.M{"$set": bson.M{"status": models.Approved, "endDate": approveReqDto.EndDate}}
+
+	updatedResult, err := requisitionCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+	}
+	var updatedDocument models.Requistion
+	if updatedResult.ModifiedCount > 0 {
+        // Retrieve the updated document
+        err = requisitionCollection.FindOne(ctx, filter).Decode(&updatedDocument)
+        if err != nil {
+            log.Fatal(err)
+        }
+	}
+	var departmentAdmin models.DepartmentAdmin
+
+	_= departmentAdminCollection.FindOne(ctx, bson.M{"deparementId":updatedDocument.DepartmentId}).Decode(&departmentAdmin)
+	services.SendEmail(services.EmailRecipientData{
+		FirstName: departmentAdmin.FirstName,
+		LastName: departmentAdmin.LastName,
+		Email: departmentAdmin.Email,
+
+	}, "./templates/approved_req.html")
+	return c.JSON(http.StatusOK,  map[string]interface{}{
+		"message": "Requisition Approved and auction Started",
+	})
+
+}
+func RejectRequistion(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	requistionId := c.Param("id")
 	objId, err := primitive.ObjectIDFromHex(requistionId)
@@ -449,13 +525,17 @@ func ApproveRequistion(c echo.Context) error {
 
 	// }
 	filter := bson.M{"_id": objId}
-	update := bson.M{"$set": bson.M{"status": models.Approved}}
+	update := bson.M{"$set": bson.M{"status": models.Denied}}
 
 	_, err = requisitionCollection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"message": "Requisition Not found",
+		})
 	}
-	return c.JSON(http.StatusOK, "success")
+	return c.JSON(http.StatusOK,  map[string]interface{}{
+		"message": "Requisition Rejected",
+	})
 
 }
 func DeleteRequistion(c echo.Context) error {
