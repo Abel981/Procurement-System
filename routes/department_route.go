@@ -29,5 +29,6 @@ func DepartmentRoute(e *echo.Echo) {
 	r.GET("/gigs", controllers.GetGigs)
 	r.GET("/gig/:id", controllers.GetGigById)
 	r.GET("/supplier/:id", controllers.GetAUser)
+	r.GET("/budget/:deptAdminId", controllers.GetDepartmentBudget)
 	
 }

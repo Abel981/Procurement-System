@@ -155,6 +155,23 @@ if !isEnough {
 	return c.JSON(http.StatusCreated, responses.UserDataResponse{ Message: "success", Data: &map[string]interface{}{"data": result}})
 
 }
+func GetDepartmentBudget(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var department models.Department
+	departmentAdminId := c.Param("deptAdminId")
+	objId, err := primitive.ObjectIDFromHex(departmentAdminId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+	err = departmentCollection.FindOne(ctx, bson.M{"departmentAdminId": objId}).Decode(&department)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"message": "Unauthorized",
+		})
+	}
+	return c.JSON(http.StatusOK, echo.Map{"budget": department.DepartmentBudget})
+}
 
 func GetDepartmentRequistions(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

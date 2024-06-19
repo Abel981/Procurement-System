@@ -250,6 +250,28 @@ func GetDepartmentById(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, department)
 }
+func GetSupplierById(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	supplierId := c.Param("id")
+
+	objId, err := primitive.ObjectIDFromHex(supplierId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+
+	var supplier models.User
+	err = userCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&supplier)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return c.JSON(http.StatusNotFound, responses.UserDataResponse{Message: "user not found", Data: nil})
+		}
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"error": err.Error()}})
+	}
+
+	return c.JSON(http.StatusOK, supplier)
+}
 
 func UpdateDepartmentBudget(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -482,13 +504,12 @@ func ApproveRequistion(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": "Document not found"}})
 	}
 	var updatedDocument models.Requistion
-	
-		err = requisitionCollection.FindOne(ctx, filter).Decode(&updatedDocument)
-		if err != nil {
 
-			log.Fatal(err)
-		}
-	
+	err = requisitionCollection.FindOne(ctx, filter).Decode(&updatedDocument)
+	if err != nil {
+
+		log.Fatal(err)
+	}
 
 	fmt.Println(updatedDocument.DepartmentId)
 	var departmentAdmin models.DepartmentAdmin
@@ -684,7 +705,7 @@ func ApproveBidManually(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "No bids found for the requisition"})
 	}
 	// var updatedBid models.Bid
-	
+
 	_, err = bidCollection.UpdateOne(ctx,
 		bson.M{"_id": lowestBid.ID},
 		bson.M{"$set": bson.M{"status": models.Approved}},
@@ -764,17 +785,17 @@ func ApproveBidManually(c echo.Context) error {
 	_, err = requisitionCollection.UpdateOne(ctx, filter, update)
 	// update = bson.M{"$set": bson.M{"departmentBudget":}}
 	var requisition models.Requistion
-	err = requisitionCollection.FindOne(ctx, bson.M{"_id":objId}).Decode(&requisition)
+	err = requisitionCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&requisition)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 	var department models.Department
-	err = departmentCollection.FindOne(ctx, bson.M{"_id":requisition.DepartmentId}).Decode(&department)
+	err = departmentCollection.FindOne(ctx, bson.M{"_id": requisition.DepartmentId}).Decode(&department)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
-	department.DepartmentBudget -= (float32(requisition.Quantity)*float32(lowestBid.Price))
-	departmentCollection.ReplaceOne(ctx,bson.M{"_id":department.ID},department)
+	department.DepartmentBudget -= (float32(requisition.Quantity) * float32(lowestBid.Price))
+	departmentCollection.ReplaceOne(ctx, bson.M{"_id": department.ID}, department)
 	wg.Wait()
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "Bid accepted successfully"})
@@ -815,16 +836,27 @@ func ApproveBidManually(c echo.Context) error {
 // 	return c.JSON(http.StatusOK, map[string]string{"message": "Bid accepted successfully"})
 // }
 
-func GetAllBids(c echo.Context) error {
+func GetAllBidsByReqID(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	var bids []models.Bid
 	requisitionId := c.Param("reqId")
-	objId, err := primitive.ObjectIDFromHex(requisitionId)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
+	status := c.QueryParam("status")
+	filter := bson.M{} // Initialize the filter map here
+
+	if status != "" {
+		filter["status"] = status
 	}
-	var filter = bson.M{"requistionId": objId}
+	if requisitionId != "" {
+		fmt.Println("hh")
+		objId, err := primitive.ObjectIDFromHex(requisitionId)
+		filter["requistionId"] = objId
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, responses.UserDataResponse{Message: "invalid ObjectID", Data: &map[string]interface{}{"error": err.Error()}})
+		}
+
+	}
+
 	cursor, err := bidCollection.Find(ctx, filter)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{Message: "error", Data: &map[string]interface{}{"data": err.Error()}})
@@ -847,11 +879,49 @@ func GetAllBids(c echo.Context) error {
 	return c.JSON(http.StatusOK, bids)
 }
 
-func ApproveGigRequistion(c echo.Context) error {
+func GetAllBids(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	
+	var bids []models.Bid
+	fmt.Println("hh")
+	status := c.QueryParam("status")
+	// Initialize an empty filter
+	filter := bson.M{}
+	if status != "" {
+		filter["status"] = status
+	}
+
+	// Fetch data from the collection
+	cursor, err := bidCollection.Find(ctx, filter)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{
+			Message: "error",
+			Data:    &map[string]interface{}{"data": err.Error()},
+		})
+	}
+	defer cursor.Close(ctx)
+
+	// Decode all documents
+	if err = cursor.All(ctx, &bids); err != nil {
+		return c.JSON(http.StatusInternalServerError, responses.UserDataResponse{
+			Message: "error",
+			Data:    &map[string]interface{}{"data": err.Error()},
+		})
+	}
+
+	// If no bids found, return an empty array
+	if len(bids) == 0 {
+		return c.JSON(http.StatusOK, []models.Bid{})
+	}
+
+	// Return the result
+	return c.JSON(http.StatusOK, bids)
+}
+
+func ApproveGigRequistion(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	gigRequisitionId := c.Param("id")
 	objId, err := primitive.ObjectIDFromHex(gigRequisitionId)
@@ -894,8 +964,6 @@ func ApproveGigRequistion(c echo.Context) error {
 func RejectGigRequistion(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
-	
 
 	gigRequisitionId := c.Param("id")
 	objId, err := primitive.ObjectIDFromHex(gigRequisitionId)
@@ -947,8 +1015,6 @@ func GetAllGigRequisitions(c echo.Context) error {
 	if requisitionStatus != "" {
 		filter["status"] = requisitionStatus
 	}
-
-
 
 	cursor, err := gigRequisitionCollection.Find(ctx, filter)
 	if err != nil {

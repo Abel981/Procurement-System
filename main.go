@@ -8,8 +8,8 @@ import (
 	"procrument-system/routes"
 
 	"github.com/casbin/casbin"
-	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
@@ -21,6 +21,7 @@ import (
 func main() {
 	e := echo.New()
 	mongoClient := configs.ConnectDB()
+
 
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"http://localhost:3000", "http://127.0.0.1:3000"},
